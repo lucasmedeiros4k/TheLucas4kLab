@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { readFileSync, writeFileSync, copyFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
@@ -55,9 +55,23 @@ async function main() {
     const vite = await createViteServer({
       root: __dirname,
       server: { middlewareMode: true },
-      appType: "custom",
+      appType: "spa",
     });
     app.use(vite.middlewares);
+    // Fallback HTML for SPA (garantia no Windows / middleware mode)
+    app.use(async (req, res, next) => {
+      if (req.method !== "GET" && req.method !== "HEAD") return next();
+      if (req.originalUrl.startsWith("/api")) return next();
+      try {
+        const url = req.originalUrl;
+        let template = readFileSync(join(__dirname, "index.html"), "utf-8");
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     const dist = join(__dirname, "dist");
     app.use(express.static(dist));
