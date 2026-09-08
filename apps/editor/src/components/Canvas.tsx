@@ -1,189 +1,186 @@
+import { useRef, useState, type CSSProperties } from "react";
 import type { ContentElement, Screen } from "../types/content";
 import {
-  emojiFromSrc,
+  clampPct,
+  hasLayout,
   isEmojiSrc,
   resolveMediaSrc,
 } from "../types/content";
-import { uploadMedia } from "../api/contentApi";
-import { useRef, useState } from "react";
+import { ElementVisual } from "./ElementVisual";
+import { LAUEM_TOOL_MIME } from "./Toolbox";
 
 type Props = {
   screen: Screen | null;
   selectedElementId: string | null;
   onSelectElement: (id: string | null) => void;
   onRenameScreen: (title: string) => void;
-  onUpdateScreen: (patch: Partial<Screen>) => void;
-  onAddElement: (type: ContentElement["type"]) => void;
+  onDropTool: (type: ContentElement["type"], x: number, y: number) => void;
+  onMoveElement: (id: string, x: number, y: number) => void;
 };
 
+const MOVE_MIME = "application/x-lauem-move";
+
 export function Canvas({
-  screen, selectedElementId, onSelectElement, onRenameScreen, onUpdateScreen, onAddElement,
+  screen,
+  selectedElementId,
+  onSelectElement,
+  onRenameScreen,
+  onDropTool,
+  onMoveElement,
 }: Props) {
-  const bgInputRef = useRef<HTMLInputElement>(null);
-  const [bgBusy, setBgBusy] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   if (!screen) {
-    return <div className="empty">Selecione ou crie uma tela.</div>;
+    return <div className="empty">Selecione ou crie uma tela à esquerda.</div>;
   }
 
   const bgUrl = screen.backgroundImage ? resolveMediaSrc(screen.backgroundImage) : "";
-  const canvasStyle = bgUrl && !isEmojiSrc(bgUrl)
-    ? {
-        backgroundImage: `linear-gradient(rgba(15,23,42,0.55), rgba(15,23,42,0.75)), url(${JSON.stringify(bgUrl)})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }
-    : undefined;
+  const stageStyle: CSSProperties | undefined =
+    bgUrl && !isEmojiSrc(bgUrl)
+      ? {
+          backgroundImage: `linear-gradient(rgba(15,23,42,0.45), rgba(15,23,42,0.65)), url(${JSON.stringify(bgUrl)})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }
+      : undefined;
 
-  const onBgFile = async (file: File | null) => {
-    if (!file) return;
-    setBgBusy(true);
-    try {
-      const { url } = await uploadMedia(file);
-      onUpdateScreen({ backgroundImage: url });
-    } catch (e) {
-      alert("Falha no upload do plano de fundo: " + String(e));
-    } finally {
-      setBgBusy(false);
+  const pctFromEvent = (e: React.DragEvent | React.MouseEvent) => {
+    const el = stageRef.current;
+    if (!el) return { x: 10, y: 10 };
+    const rect = el.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    return { x: clampPct(x, 0, 92), y: clampPct(y, 0, 92) };
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (
+      [...e.dataTransfer.types].includes(LAUEM_TOOL_MIME) ||
+      [...e.dataTransfer.types].includes(MOVE_MIME) ||
+      [...e.dataTransfer.types].includes("text/plain")
+    ) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = [...e.dataTransfer.types].includes(MOVE_MIME) ? "move" : "copy";
+      setDragOver(true);
     }
   };
 
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const { x, y } = pctFromEvent(e);
+    const plain = e.dataTransfer.getData("text/plain") || "";
+    const moveId = e.dataTransfer.getData(MOVE_MIME) || (plain.startsWith("lauem-move:") ? plain.slice("lauem-move:".length) : "");
+    if (moveId) {
+      onMoveElement(moveId, x, y);
+      onSelectElement(moveId);
+      return;
+    }
+    const tool =
+      e.dataTransfer.getData(LAUEM_TOOL_MIME) || (plain.startsWith("lauem-tool:") ? plain.slice("lauem-tool:".length) : plain);
+    if (
+      tool === "button" ||
+      tool === "image" ||
+      tool === "video" ||
+      tool === "checklist" ||
+      tool === "text"
+    ) {
+      onDropTool(tool, x, y);
+    }
+  };
+
+  /** Elementos sem x/y empilham; com layout usam absolute % */
+  const flowEls = screen.elements.filter((el) => !hasLayout(el));
+  const absEls = screen.elements.filter((el) => hasLayout(el));
+
   return (
-    <div className={"canvas" + (bgUrl ? " has-bg" : "")} style={canvasStyle}>
-      <div className="canvas-header">
+    <div className="phone-workspace">
+      <div className="phone-meta">
         <input
+          className="phone-title-input"
           value={screen.title}
           onChange={(e) => onRenameScreen(e.target.value)}
-          style={{ fontSize: "1.3rem", fontWeight: 700, background: "transparent", border: "none", color: "inherit", width: "100%" }}
+          aria-label="Nome da tela"
         />
+        <span className="muted phone-meta-hint">Arraste ferramentas para o celular</span>
       </div>
 
-      <div className="field screen-bg-field">
-        <label>Plano de fundo da tela</label>
-        <div className="row">
-          <input
-            value={screen.backgroundImage || ""}
-            onChange={(e) => onUpdateScreen({ backgroundImage: e.target.value || undefined })}
-            placeholder="URL https://... ou /media/arquivo.png"
-          />
-          <button
-            className="btn"
-            type="button"
-            disabled={bgBusy}
-            onClick={() => bgInputRef.current?.click()}
-            style={{ flex: "0 0 auto" }}
-          >
-            {bgBusy ? "Enviando…" : "Enviar imagem"}
-          </button>
-          {screen.backgroundImage && (
-            <button
-              className="btn ghost"
-              type="button"
-              onClick={() => onUpdateScreen({ backgroundImage: undefined })}
-              style={{ flex: "0 0 auto" }}
-            >
-              Limpar
-            </button>
-          )}
-        </div>
-        <input
-          ref={bgInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0] ?? null;
-            e.target.value = "";
-            void onBgFile(f);
-          }}
-        />
-      </div>
-
-      <div className="toolbar">
-        <button className="btn" onClick={() => onAddElement("button")}>Adicionar botão</button>
-        <button className="btn" onClick={() => onAddElement("image")}>Adicionar imagem</button>
-        <button className="btn" onClick={() => onAddElement("video")}>Adicionar vídeo</button>
-        <button className="btn" onClick={() => onAddElement("checklist")}>Adicionar checklist</button>
-        <button className="btn" onClick={() => onAddElement("text")}>Adicionar texto</button>
-      </div>
-      {screen.elements.length === 0 && (
-        <div className="empty">Sandbox vazio — adicione elementos para montar a experiência.</div>
-      )}
-      {screen.elements.map((el) => (
+      <div className="phone-bezel">
+        <div className="phone-notch" aria-hidden />
         <div
-          key={el.id}
-          className={"element-card" + (el.id === selectedElementId ? " selected" : "")}
-          onClick={() => onSelectElement(el.id)}
+          ref={stageRef}
+          className={
+            "phone-stage" +
+            (bgUrl ? " has-bg" : "") +
+            (dragOver ? " drag-over" : "") +
+            (screen.elements.length === 0 ? " is-empty" : "")
+          }
+          style={stageStyle}
+          onClick={() => onSelectElement(null)}
+          onDragOver={onDragOver}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
         >
-          {el.type === "button" && (
-            <>
-              <h3>Botão</h3>
-              <div>{el.label}</div>
-              <div className="muted">
-                {el.action.target
-                  ? `${el.action.type}: ${el.action.target}`
-                  : `${el.action.type}: (sem destino)`}
-              </div>
-            </>
+          {screen.elements.length === 0 && (
+            <div className="phone-empty-hint">
+              Celular vazio
+              <br />
+              <span>Arraste um botão, imagem ou texto para cá</span>
+            </div>
           )}
-          {el.type === "image" && (
-            <>
-              <h3>
-                {el.role === "logo" ? "Logo" : el.role === "icon" ? "Ícone" : "Imagem"}
-              </h3>
-              <ImagePreview el={el} />
-              <div className="muted">{el.alt || el.src || "Sem fonte"}</div>
-            </>
-          )}
-          {el.type === "video" && (
-            <>
-              <h3>Vídeo</h3>
-              <div>{el.title || "Sem título"}</div>
-              <div className="muted">{el.url || "URL vazia"}</div>
-            </>
-          )}
-          {el.type === "checklist" && (
-            <>
-              <h3>Checklist</h3>
-              <div>{el.title}</div>
-              <div className="muted">{el.items.length} itens</div>
-            </>
-          )}
-          {el.type === "text" && (
-            <>
-              <h3>Texto</h3>
-              <div>{el.content}</div>
-            </>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
 
-function ImagePreview({ el }: { el: Extract<ContentElement, { type: "image" }> }) {
-  if (!el.src) {
-    return <div className="img-placeholder">Sem imagem — cole URL ou envie arquivo no inspetor</div>;
-  }
-  if (isEmojiSrc(el.src)) {
-    return (
-      <div className="img-emoji" style={{ fontSize: el.role === "icon" ? 40 : 56 }}>
-        {emojiFromSrc(el.src)}
+          <div className="phone-flow">
+            {flowEls.map((el) => (
+              <div
+                key={el.id}
+                className={
+                  "phone-el" + (el.id === selectedElementId ? " selected" : "")
+                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectElement(el.id);
+                }}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(MOVE_MIME, el.id);
+                  e.dataTransfer.setData("text/plain", "lauem-move:"+el.id);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+              >
+                <ElementVisual el={el} />
+              </div>
+            ))}
+          </div>
+
+          {absEls.map((el) => (
+            <div
+              key={el.id}
+              className={
+                "phone-el abs" + (el.id === selectedElementId ? " selected" : "")
+              }
+              style={{
+                left: `${el.x}%`,
+                top: `${el.y}%`,
+                width: el.w != null ? `${el.w}%` : undefined,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectElement(el.id);
+              }}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData(MOVE_MIME, el.id);
+                  e.dataTransfer.setData("text/plain", "lauem-move:"+el.id);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+            >
+              <ElementVisual el={el} />
+            </div>
+          ))}
+        </div>
+        <div className="phone-home-bar" aria-hidden />
       </div>
-    );
-  }
-  const src = resolveMediaSrc(el.src);
-  return (
-    <img
-      className="img-preview"
-      src={src}
-      alt={el.alt || ""}
-      style={{
-        objectFit: el.fit || "contain",
-        width: el.width ? el.width : "100%",
-        height: el.height ? el.height : "auto",
-        maxHeight: 180,
-      }}
-    />
+    </div>
   );
 }

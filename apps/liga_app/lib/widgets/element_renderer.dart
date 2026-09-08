@@ -5,11 +5,14 @@ import "../models/content.dart";
 class ElementRenderer extends StatefulWidget {
   final ContentElement element;
   final void Function(String screenId) onNavigate;
+  /// true = botão ocupa largura total (Column); false = intrínseco (Positioned)
+  final bool expand;
 
   const ElementRenderer({
     super.key,
     required this.element,
     required this.onNavigate,
+    this.expand = true,
   });
 
   @override
@@ -29,24 +32,22 @@ class _ElementRendererState extends State<ElementRenderer> {
       );
     }
     if (el is ButtonElement) {
+      final btn = FilledButton(
+        onPressed: () async {
+          if (el.action.type == "navigate" && el.action.target.isNotEmpty) {
+            widget.onNavigate(el.action.target);
+          } else if (el.action.type == "openUrl" && el.action.target.isNotEmpty) {
+            final uri = Uri.tryParse(el.action.target);
+            if (uri != null) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          }
+        },
+        child: Text(el.label),
+      );
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: () async {
-              if (el.action.type == "navigate" && el.action.target.isNotEmpty) {
-                widget.onNavigate(el.action.target);
-              } else if (el.action.type == "openUrl" && el.action.target.isNotEmpty) {
-                final uri = Uri.tryParse(el.action.target);
-                if (uri != null) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              }
-            },
-            child: Text(el.label),
-          ),
-        ),
+        child: widget.expand ? SizedBox(width: double.infinity, child: btn) : btn,
       );
     }
     if (el is ImageElement) {
@@ -141,7 +142,7 @@ class _ElementRendererState extends State<ElementRenderer> {
     if (el.role == "logo" || el.role == "icon") {
       return Center(child: img);
     }
-    return SizedBox(width: double.infinity, child: img);
+    return SizedBox(width: widget.expand ? double.infinity : null, child: img);
   }
 
   Widget _broken(String? alt) {

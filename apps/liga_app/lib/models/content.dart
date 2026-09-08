@@ -60,7 +60,14 @@ class AppScreen {
 
 sealed class ContentElement {
   final String id;
-  const ContentElement({required this.id});
+  /// Layout opcional em % do canvas (0–100). Sem x/y = Column (auto).
+  final double? x;
+  final double? y;
+  final double? w;
+
+  const ContentElement({required this.id, this.x, this.y, this.w});
+
+  bool get hasLayout => x != null && y != null;
 
   factory ContentElement.fromJson(Map<String, dynamic> json) {
     final type = json["type"] as String? ?? "";
@@ -79,6 +86,12 @@ sealed class ContentElement {
         return TextElement(id: json["id"] as String? ?? "unknown", content: "Elemento desconhecido: $type");
     }
   }
+
+  static double? _pct(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    return null;
+  }
 }
 
 class ButtonAction {
@@ -94,22 +107,42 @@ class ButtonAction {
 class ButtonElement extends ContentElement {
   final String label;
   final ButtonAction action;
-  const ButtonElement({required super.id, required this.label, required this.action});
+  const ButtonElement({
+    required super.id,
+    required this.label,
+    required this.action,
+    super.x,
+    super.y,
+    super.w,
+  });
   factory ButtonElement.fromJson(Map<String, dynamic> json) => ButtonElement(
         id: json["id"] as String? ?? "",
         label: json["label"] as String? ?? "Botão",
         action: ButtonAction.fromJson(Map<String, dynamic>.from(json["action"] as Map? ?? {})),
+        x: ContentElement._pct(json["x"]),
+        y: ContentElement._pct(json["y"]),
+        w: ContentElement._pct(json["w"]),
       );
 }
 
 class VideoElement extends ContentElement {
   final String url;
   final String? title;
-  const VideoElement({required super.id, required this.url, this.title});
+  const VideoElement({
+    required super.id,
+    required this.url,
+    this.title,
+    super.x,
+    super.y,
+    super.w,
+  });
   factory VideoElement.fromJson(Map<String, dynamic> json) => VideoElement(
         id: json["id"] as String? ?? "",
         url: json["url"] as String? ?? "",
         title: json["title"] as String?,
+        x: ContentElement._pct(json["x"]),
+        y: ContentElement._pct(json["y"]),
+        w: ContentElement._pct(json["w"]),
       );
 }
 
@@ -126,22 +159,41 @@ class ChecklistItem {
 class ChecklistElement extends ContentElement {
   final String title;
   final List<ChecklistItem> items;
-  const ChecklistElement({required super.id, required this.title, required this.items});
+  const ChecklistElement({
+    required super.id,
+    required this.title,
+    required this.items,
+    super.x,
+    super.y,
+    super.w,
+  });
   factory ChecklistElement.fromJson(Map<String, dynamic> json) => ChecklistElement(
         id: json["id"] as String? ?? "",
         title: json["title"] as String? ?? "Checklist",
         items: (json["items"] as List? ?? [])
             .map((e) => ChecklistItem.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),
+        x: ContentElement._pct(json["x"]),
+        y: ContentElement._pct(json["y"]),
+        w: ContentElement._pct(json["w"]),
       );
 }
 
 class TextElement extends ContentElement {
   final String content;
-  const TextElement({required super.id, required this.content});
+  const TextElement({
+    required super.id,
+    required this.content,
+    super.x,
+    super.y,
+    super.w,
+  });
   factory TextElement.fromJson(Map<String, dynamic> json) => TextElement(
         id: json["id"] as String? ?? "",
         content: json["content"] as String? ?? "",
+        x: ContentElement._pct(json["x"]),
+        y: ContentElement._pct(json["y"]),
+        w: ContentElement._pct(json["w"]),
       );
 }
 
@@ -161,6 +213,9 @@ class ImageElement extends ContentElement {
     this.width,
     this.height,
     this.role,
+    super.x,
+    super.y,
+    super.w,
   });
 
   factory ImageElement.fromJson(Map<String, dynamic> json) => ImageElement(
@@ -171,6 +226,9 @@ class ImageElement extends ContentElement {
         width: (json["width"] as num?)?.toDouble(),
         height: (json["height"] as num?)?.toDouble(),
         role: json["role"] as String?,
+        x: ContentElement._pct(json["x"]),
+        y: ContentElement._pct(json["y"]),
+        w: ContentElement._pct(json["w"]),
       );
 
   bool get isEmoji => src.startsWith("emoji:");

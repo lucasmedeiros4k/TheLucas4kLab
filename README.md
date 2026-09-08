@@ -33,11 +33,15 @@ O servidor (`server.mjs`) serve a UI (Vite em modo middleware) e a API:
 - `POST /api/media` — upload multipart (`file`) → `content/media/` e retorna `{ url: "/media/arquivo" }`
 - `GET /media/*` — serve arquivos de `content/media/`
 
-### UX do editor
+### UX do editor (canvas visual)
 
-- Esquerda: lista de telas + **Adicionar tela**
-- Centro: canvas da tela + plano de fundo + botões (**Adicionar imagem** incluso)
-- Direita: inspetor (URL/upload, alt, fit, role logo|icon|photo, atalhos emoji)\n- Botões novos começam **sem destino** (escolha no inspetor)
+Sandbox tipo celular no meio, ferramentas nas laterais (bem simples / "bobinho"):
+
+- **Esquerda**: lista de telas (como atividades do Android) + **Adicionar tela** / remover / definir início.
+- **Centro**: **preview ao vivo** num frame de celular — fundo, botões, imagens, vídeo, checklist e texto (não é formulário).
+- **Direita**: **Ferramentas** arrastáveis (botão / imagem / vídeo / checklist / texto) + inspetor (X/Y/%, propriedades).
+- **Arrastar e soltar**: salva `x`/`y`/`w` em % (0–100). Sem layout = empilha em coluna.
+- **Preview**: navega entre telas; no modo edição, clicar seleciona.
 - Topo: **Salvar rascunho**, **Publicar**, **Preview**
 
 ## Imagens e mídia
@@ -47,9 +51,9 @@ O servidor (`server.mjs`) serve a UI (Vite em modo middleware) e a API:
 3. Publicar copia midia para apps/liga_app/assets/media/.
 4. Flutter: http(s)=Image.network; /media/=Image.asset; emoji:=texto.
 
-## Atualizar uma cópia ZIP local
+## Atualizar uma cópia local
 
-1. Baixe ZIP no GitHub ou atualize o clone.
+1. `git pull origin main` (ou baixe ZIP no GitHub).
 2. Preserve content/draft.json e content/media/.
 3. Reinstale deps do editor e suba o servidor.
 4. flutter pub get e rode o app após Publicar.
@@ -80,6 +84,7 @@ flutter run -d linux
 O app:
 
 - Renderiza telas do JSON publicado (plano de fundo + imagens)
+- Com x/y: Stack+Positioned; sem layout: Column
 - Navega com pilha em botões `navigate`
 - Abre URLs com `url_launcher`
 - Checklist com estado local efêmero
@@ -109,6 +114,8 @@ O app:
   ]
 }
 ```
+
+x/y/w opcionais (% 0-100). Sem eles, empilha em coluna.
 
 ## Estrutura
 

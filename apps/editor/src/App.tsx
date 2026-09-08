@@ -5,11 +5,12 @@ import type {
   ContentElement,
   Screen,
 } from "./types/content";
-import { createEmptyContent, uid } from "./types/content";
+import { clampPct, createElementOfType, createEmptyContent, uid } from "./types/content";
 import { ScreenList } from "./components/ScreenList";
 import { Canvas } from "./components/Canvas";
 import { Inspector } from "./components/Inspector";
 import { PreviewMode } from "./components/PreviewMode";
+import { Toolbox } from "./components/Toolbox";
 
 export default function App() {
   const [content, setContent] = useState<AppContent | null>(null);
@@ -47,7 +48,8 @@ export default function App() {
 
   const addScreen = () => {
     const id = uid("tela");
-    const screen: Screen = { id, title: "Nova tela", elements: [] };
+    const n = (content?.screens.length ?? 0) + 1;
+    const screen: Screen = { id, title: `Tela ${n}`, elements: [] };
     updateContent((prev) => ({ ...prev, screens: [...prev.screens, screen] }));
     setSelectedScreenId(id);
     setSelectedElementId(null);
@@ -84,28 +86,8 @@ export default function App() {
     setSelectedElementId(null);
   };
 
-  const addElement = (type: ContentElement["type"]) => {
+  const insertElement = (el: ContentElement) => {
     if (!selectedScreen) return;
-    let el: ContentElement;
-    if (type === "button") {
-      // Sem destino padrão — o usuário escolhe no inspetor
-      el = { id: uid("btn"), type, label: "Botão", action: { type: "navigate", target: "" } };
-    } else if (type === "video") {
-      el = { id: uid("vid"), type, url: "", title: "Vídeo" };
-    } else if (type === "checklist") {
-      el = { id: uid("chk"), type, title: "Checklist", items: [{ id: uid("item"), label: "Item" }] };
-    } else if (type === "image") {
-      el = {
-        id: uid("img"),
-        type: "image",
-        src: "",
-        alt: "",
-        fit: "contain",
-        role: "photo",
-      };
-    } else {
-      el = { id: uid("txt"), type, content: "Texto" };
-    }
     updateContent((prev) => ({
       ...prev,
       screens: prev.screens.map((s) =>
@@ -113,6 +95,39 @@ export default function App() {
       ),
     }));
     setSelectedElementId(el.id);
+  };
+
+  /** Clique na ferramenta: coloca no meio com layout */
+  const addElement = (type: ContentElement["type"]) => {
+    const count = selectedScreen?.elements.length ?? 0;
+    const el = createElementOfType(type, {
+      x: 10,
+      y: clampPct(12 + count * 14, 5, 80),
+    });
+    insertElement(el);
+  };
+
+  /** Drop no celular: posição do ponteiro */
+  const dropTool = (type: ContentElement["type"], x: number, y: number) => {
+    const el = createElementOfType(type, { x, y });
+    insertElement(el);
+  };
+
+  const moveElement = (id: string, x: number, y: number) => {
+    if (!selectedScreen) return;
+    updateContent((prev) => ({
+      ...prev,
+      screens: prev.screens.map((s) =>
+        s.id === selectedScreen.id
+          ? {
+              ...s,
+              elements: s.elements.map((e) =>
+                e.id === id ? { ...e, x, y, w: e.w ?? 80 } : e
+              ),
+            }
+          : s
+      ),
+    }));
   };
 
   const updateElement = (element: ContentElement) => {
@@ -168,7 +183,14 @@ export default function App() {
   };
 
   if (!content) {
-    return <div className="app-shell"><div className="topbar"><div className="brand">LAUEM <span>Editor</span></div><div className="status">{status}</div></div></div>;
+    return (
+      <div className="app-shell">
+        <div className="topbar">
+          <div className="brand">LAUEM <span>Editor</span></div>
+          <div className="status">{status}</div>
+        </div>
+      </div>
+    );
   }
 
   if (preview) {
@@ -177,7 +199,9 @@ export default function App() {
         <div className="topbar">
           <div className="brand">LAUEM <span>Preview</span></div>
           <div className="topbar-actions">
-            <button className="btn" onClick={() => setPreview(false)}>Sair do preview</button>
+            <button className="btn" type="button" onClick={() => setPreview(false)}>
+              Sair do preview
+            </button>
           </div>
         </div>
         <PreviewMode content={content} />
@@ -191,17 +215,26 @@ export default function App() {
         <div className="brand">LAUEM <span>Editor</span></div>
         <div className="status">{status}</div>
         <div className="topbar-actions">
-          <button className="btn ghost" disabled={busy} onClick={() => setPreview(true)}>Preview</button>
-          <button className="btn" disabled={busy} onClick={onSave}>Salvar rascunho</button>
-          <button className="btn primary" disabled={busy} onClick={onPublish}>Publicar</button>
+          <button className="btn ghost" type="button" disabled={busy} onClick={() => setPreview(true)}>
+            Preview
+          </button>
+          <button className="btn" type="button" disabled={busy} onClick={onSave}>
+            Salvar rascunho
+          </button>
+          <button className="btn primary" type="button" disabled={busy} onClick={onPublish}>
+            Publicar
+          </button>
         </div>
       </div>
       <div className="layout">
-        <aside className="panel">
+        <aside className="panel panel-left">
           <ScreenList
             content={content}
             selectedScreenId={selectedScreenId}
-            onSelect={(id) => { setSelectedScreenId(id); setSelectedElementId(null); }}
+            onSelect={(id) => {
+              setSelectedScreenId(id);
+              setSelectedElementId(null);
+            }}
             onAdd={addScreen}
             onRemove={removeScreen}
             onSetHome={(id) => updateContent((prev) => ({ ...prev, homeScreenId: id }))}
@@ -214,19 +247,22 @@ export default function App() {
             selectedElementId={selectedElementId}
             onSelectElement={setSelectedElementId}
             onRenameScreen={(title) => selectedScreen && renameScreen(selectedScreen.id, title)}
-            onUpdateScreen={updateScreen}
-            onAddElement={addElement}
+            onDropTool={dropTool}
+            onMoveElement={moveElement}
           />
         </main>
-        <aside className="panel">
-          <Inspector
-            content={content}
-            screen={selectedScreen}
-            element={selectedElement}
-            onChange={updateElement}
-            onUpdateScreen={updateScreen}
-            onRemove={() => selectedElement && removeElement(selectedElement.id)}
-          />
+        <aside className="panel panel-right">
+          <Toolbox onAddClick={addElement} />
+          <div className="inspector-block">
+            <Inspector
+              content={content}
+              screen={selectedScreen}
+              element={selectedElement}
+              onChange={updateElement}
+              onUpdateScreen={updateScreen}
+              onRemove={() => selectedElement && removeElement(selectedElement.id)}
+            />
+          </div>
         </aside>
       </div>
     </div>

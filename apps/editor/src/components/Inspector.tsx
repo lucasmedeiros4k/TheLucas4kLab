@@ -2,7 +2,9 @@ import { useRef, useState } from "react";
 import type { AppContent, ContentElement, Screen } from "../types/content";
 import {
   ICON_PRESETS,
+  clampPct,
   emojiSrc,
+  hasLayout,
   uid,
 } from "../types/content";
 import { uploadMedia } from "../api/contentApi";
@@ -18,7 +20,22 @@ type Props = {
 
 export function Inspector({ content, screen, element, onChange, onUpdateScreen, onRemove }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const bgRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [bgBusy, setBgBusy] = useState(false);
+
+  const uploadBg = async (file: File | null) => {
+    if (!file || !screen) return;
+    setBgBusy(true);
+    try {
+      const { url } = await uploadMedia(file);
+      onUpdateScreen({ backgroundImage: url });
+    } catch (e) {
+      alert("Falha no upload do plano de fundo: " + String(e));
+    } finally {
+      setBgBusy(false);
+    }
+  };
 
   if (!element) {
     return (
@@ -26,9 +43,9 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
         <h2>Propriedades</h2>
         {screen ? (
           <>
-            <p className="muted">Tela selecionada — ou escolha um elemento no canvas.</p>
+            <p className="muted">Tela selecionada — toque num elemento no celular para editá-lo.</p>
             <div className="field">
-              <label>Plano de fundo (URL ou /media/...)</label>
+              <label>Plano de fundo da tela</label>
               <input
                 value={screen.backgroundImage || ""}
                 onChange={(e) =>
@@ -37,9 +54,39 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
                 placeholder="https://... ou /media/arquivo.png"
               />
             </div>
+            <div className="row" style={{ marginBottom: 12 }}>
+              <button
+                className="btn"
+                type="button"
+                disabled={bgBusy}
+                onClick={() => bgRef.current?.click()}
+              >
+                {bgBusy ? "Enviando…" : "Enviar imagem"}
+              </button>
+              {screen.backgroundImage && (
+                <button
+                  className="btn ghost"
+                  type="button"
+                  onClick={() => onUpdateScreen({ backgroundImage: undefined })}
+                >
+                  Limpar
+                </button>
+              )}
+              <input
+                ref={bgRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  e.target.value = "";
+                  void uploadBg(f);
+                }}
+              />
+            </div>
           </>
         ) : (
-          <p className="muted">Selecione um elemento no canvas.</p>
+          <p className="muted">Selecione um elemento no celular.</p>
         )}
       </div>
     );
@@ -58,10 +105,80 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
     }
   };
 
+  const setLayout = (patch: { x?: number; y?: number; w?: number | undefined }) => {
+    onChange({ ...element, ...patch });
+  };
+
   return (
     <div>
       <h2>Propriedades</h2>
-      <div className="muted" style={{ marginBottom: 12 }}>Tipo: {element.type}</div>
+      <div className="muted" style={{ marginBottom: 12 }}>
+        Tipo: {element.type}
+        {hasLayout(element) ? " · posicionado" : " · empilhado"}
+      </div>
+
+      <div className="layout-fields">
+        <div className="field">
+          <label>X (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            value={element.x ?? ""}
+            placeholder="auto"
+            onChange={(e) =>
+              setLayout({
+                x: e.target.value === "" ? undefined : clampPct(Number(e.target.value)),
+                y: element.y ?? 10,
+              })
+            }
+          />
+        </div>
+        <div className="field">
+          <label>Y (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            value={element.y ?? ""}
+            placeholder="auto"
+            onChange={(e) =>
+              setLayout({
+                y: e.target.value === "" ? undefined : clampPct(Number(e.target.value)),
+                x: element.x ?? 10,
+              })
+            }
+          />
+        </div>
+        <div className="field">
+          <label>Largura (%)</label>
+          <input
+            type="number"
+            min={10}
+            max={100}
+            step={1}
+            value={element.w ?? ""}
+            placeholder="auto"
+            onChange={(e) =>
+              setLayout({
+                w: e.target.value === "" ? undefined : clampPct(Number(e.target.value), 10, 100),
+              })
+            }
+          />
+        </div>
+      </div>
+      {hasLayout(element) && (
+        <button
+          className="btn ghost"
+          type="button"
+          style={{ marginBottom: 12 }}
+          onClick={() => onChange({ ...element, x: undefined, y: undefined, w: undefined })}
+        >
+          Voltar ao empilhamento automático
+        </button>
+      )}
 
       {element.type === "button" && (
         <>
@@ -206,38 +323,6 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
               <option value="cover">Cover (preencher)</option>
             </select>
           </div>
-          <div className="row">
-            <div className="field">
-              <label>Largura (px, opcional)</label>
-              <input
-                type="number"
-                min={0}
-                value={element.width ?? ""}
-                onChange={(e) =>
-                  onChange({
-                    ...element,
-                    width: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
-                placeholder="auto"
-              />
-            </div>
-            <div className="field">
-              <label>Altura (px, opcional)</label>
-              <input
-                type="number"
-                min={0}
-                value={element.height ?? ""}
-                onChange={(e) =>
-                  onChange({
-                    ...element,
-                    height: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
-                placeholder="auto"
-              />
-            </div>
-          </div>
         </>
       )}
 
@@ -279,12 +364,14 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
                 />
                 <button
                   className="btn ghost"
+                  type="button"
                   onClick={() => onChange({ ...element, items: element.items.filter((it) => it.id !== item.id) })}
                 >×</button>
               </div>
             ))}
             <button
               className="btn"
+              type="button"
               onClick={() => onChange({ ...element, items: [...element.items, { id: uid("item"), label: "Novo item" }] })}
             >Adicionar item</button>
           </div>
@@ -292,7 +379,7 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
       )}
 
       <div style={{ marginTop: 16 }}>
-        <button className="btn ghost danger" onClick={onRemove}>Remover elemento</button>
+        <button className="btn ghost danger" type="button" onClick={onRemove}>Remover elemento</button>
       </div>
     </div>
   );
