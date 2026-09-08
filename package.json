@@ -1,0 +1,13 @@
+{
+  "name": "thelucas4klab",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LAUEM visual sandbox",
+  "scripts": {
+    "editor": "npm run dev --prefix apps/editor",
+    "editor:build": "npm run build --prefix apps/editor",
+    "publish": "node scripts/publish.mjs",
+    "sync-flutter": "node scripts/sync-flutter.mjs",
+    "publish:sync": "node scripts/publish.mjs && node scripts/sync-flutter.mjs"
+  }
+}

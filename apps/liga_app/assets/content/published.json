@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "disclaimer": "Conteúdo educacional da LAUEM. Não substitui protocolos clínicos oficiais.",
+  "homeScreenId": "home",
+  "screens": [
+    {
+      "id": "home",
+      "title": "Início",
+      "elements": []
+    }
+  ]
+}
