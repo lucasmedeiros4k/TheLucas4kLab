@@ -5,14 +5,34 @@ import "package:flutter/services.dart";
 
 import "models/content.dart";
 import "screens/content_screen.dart";
+import "services/app_settings.dart";
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const LigaApp());
 }
 
-class LigaApp extends StatelessWidget {
+class LigaApp extends StatefulWidget {
   const LigaApp({super.key});
+
+  @override
+  State<LigaApp> createState() => _LigaAppState();
+}
+
+class _LigaAppState extends State<LigaApp> {
+  late final AppSettings _settings = AppSettings();
+
+  @override
+  void initState() {
+    super.initState();
+    _settings.load();
+  }
+
+  @override
+  void dispose() {
+    _settings.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +46,14 @@ class LigaApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const ContentLoader(),
+      home: ContentLoader(settings: _settings),
     );
   }
 }
 
 class ContentLoader extends StatefulWidget {
-  const ContentLoader({super.key});
+  final AppSettings settings;
+  const ContentLoader({super.key, required this.settings});
 
   @override
   State<ContentLoader> createState() => _ContentLoaderState();
@@ -85,7 +106,7 @@ class _ContentLoaderState extends State<ContentLoader> {
           );
         }
         final home = content.screenById(content.homeScreenId) ?? content.screens.first;
-        return ContentScreen(content: content, screen: home);
+        return ContentScreen(content: content, screen: home, settings: widget.settings);
       },
     );
   }

@@ -9,11 +9,23 @@ export type ElementLayout = {
   w?: number;
 };
 
+/** Presets de som do botão (assets no Flutter). */
+export type ClickSoundId = "none" | "click" | "pop" | "beep";
+
+export const CLICK_SOUND_OPTIONS: { id: ClickSoundId; label: string }[] = [
+  { id: "none", label: "Nenhum" },
+  { id: "click", label: "Clique" },
+  { id: "pop", label: "Pop" },
+  { id: "beep", label: "Beep" },
+];
+
 export type ButtonElement = {
   id: string;
   type: "button";
   label: string;
   action: ButtonAction;
+  /** Som ao tocar no app publicado (none/click/pop/beep). Preferências do usuário ficam no app. */
+  clickSound?: ClickSoundId | string;
 } & ElementLayout;
 
 export type VideoElement = {
@@ -32,10 +44,30 @@ export type ChecklistElement = {
   items: ChecklistItem[];
 } & ElementLayout;
 
+/** Fontes livres (system + Google Fonts). Sem fontes licenciadas Microsoft. */
+export type FontFamilyId = "system" | "Roboto" | "Open Sans" | "Lato" | "Nunito" | "Montserrat";
+
+export const FONT_FAMILY_OPTIONS: { id: FontFamilyId; label: string; css: string }[] = [
+  { id: "system", label: "Sistema", css: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" },
+  { id: "Roboto", label: "Roboto", css: "Roboto, sans-serif" },
+  { id: "Open Sans", label: "Open Sans", css: "'Open Sans', sans-serif" },
+  { id: "Lato", label: "Lato", css: "Lato, sans-serif" },
+  { id: "Nunito", label: "Nunito", css: "Nunito, sans-serif" },
+  { id: "Montserrat", label: "Montserrat", css: "Montserrat, sans-serif" },
+];
+
+export type TextAlignId = "left" | "center" | "right";
+
 export type TextElement = {
   id: string;
   type: "text";
   content: string;
+  fontFamily?: FontFamilyId | string;
+  fontSize?: number;
+  fontWeight?: number;
+  color?: string;
+  textAlign?: TextAlignId;
+  lineHeight?: number;
 } & ElementLayout;
 
 export type ImageFit = "cover" | "contain";
@@ -64,6 +96,11 @@ export type Screen = {
   title: string;
   /** URL http(s) ou caminho /media/... */
   backgroundImage?: string;
+  /**
+   * Opacidade da imagem de fundo (0–1). Ausente = 1.
+   * No editor o slider mostra 0–100%.
+   */
+  backgroundOpacity?: number;
   elements: ContentElement[];
 };
 
@@ -130,6 +167,19 @@ export function defaultWidthFor(type: ContentElement["type"]): number {
   return 80;
 }
 
+/** Normaliza opacidade 0–1 (aceita legado 0–100). Default 1. */
+export function normalizeOpacity(v: number | undefined | null): number {
+  if (v == null || Number.isNaN(Number(v))) return 1;
+  let n = Number(v);
+  if (n > 1) n = n / 100;
+  return Math.max(0, Math.min(1, n));
+}
+
+export function fontCss(family?: string): string {
+  const found = FONT_FAMILY_OPTIONS.find((f) => f.id === family);
+  return found?.css ?? FONT_FAMILY_OPTIONS[0].css;
+}
+
 export function createElementOfType(
   type: ContentElement["type"],
   layout?: ElementLayout
@@ -140,7 +190,14 @@ export function createElementOfType(
     w: layout?.w ?? defaultWidthFor(type),
   };
   if (type === "button") {
-    return { id: uid("btn"), type, label: "Botão", action: { type: "navigate", target: "" }, ...pos };
+    return {
+      id: uid("btn"),
+      type,
+      label: "Botão",
+      action: { type: "navigate", target: "" },
+      clickSound: "none",
+      ...pos,
+    };
   }
   if (type === "video") {
     return { id: uid("vid"), type, url: "", title: "Vídeo", ...pos };
@@ -159,7 +216,18 @@ export function createElementOfType(
       ...pos,
     };
   }
-  return { id: uid("txt"), type: "text", content: "Texto", ...pos };
+  return {
+    id: uid("txt"),
+    type: "text",
+    content: "Texto",
+    fontFamily: "system",
+    fontSize: 16,
+    fontWeight: 400,
+    color: "#e2e8f0",
+    textAlign: "left",
+    lineHeight: 1.45,
+    ...pos,
+  };
 }
 
 export function createEmptyContent(): AppContent {

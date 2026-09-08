@@ -268,3 +268,19 @@ button { cursor: pointer; }
   .panel { border: none; border-bottom: 1px solid var(--border); max-height: 280px; }
   .panel-right { max-height: none; }
 }
+
+.phone-bg-layer {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-repeat: no-repeat;
+}
+.phone-bg-scrim {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(rgba(15,23,42,0.35), rgba(15,23,42,0.55));
+}
+.phone-stage > .phone-flow,
+.phone-stage > .phone-el,
+.phone-stage > .phone-empty-hint { position: relative; z-index: 1; }
+.phone-stage > .phone-el.abs { z-index: 2; }
+.field input[type="range"] {
+  width: 100%; accent-color: var(--accent);
+}

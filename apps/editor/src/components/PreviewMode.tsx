@@ -3,6 +3,7 @@ import type { AppContent } from "../types/content";
 import {
   hasLayout,
   isEmojiSrc,
+  normalizeOpacity,
   resolveMediaSrc,
 } from "../types/content";
 import { ElementVisual } from "./ElementVisual";
@@ -27,12 +28,14 @@ export function PreviewMode({ content }: Props) {
   }
 
   const bgUrl = screen.backgroundImage ? resolveMediaSrc(screen.backgroundImage) : "";
-  const stageStyle: CSSProperties | undefined =
+  const bgOpacity = normalizeOpacity(screen.backgroundOpacity);
+  const bgLayerStyle: CSSProperties | undefined =
     bgUrl && !isEmojiSrc(bgUrl)
       ? {
-          backgroundImage: `linear-gradient(rgba(15,23,42,0.45), rgba(15,23,42,0.65)), url(${JSON.stringify(bgUrl)})`,
+          backgroundImage: `url(${JSON.stringify(bgUrl)})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
+          opacity: bgOpacity,
         }
       : undefined;
 
@@ -53,7 +56,9 @@ export function PreviewMode({ content }: Props) {
 
       <div className="phone-bezel">
         <div className="phone-notch" aria-hidden />
-        <div className={"phone-stage" + (bgUrl ? " has-bg" : "")} style={stageStyle}>
+        <div className={"phone-stage" + (bgUrl ? " has-bg" : "")}>
+          {bgLayerStyle && <div className="phone-bg-layer" style={bgLayerStyle} aria-hidden />}
+          {bgUrl && !isEmojiSrc(bgUrl) && <div className="phone-bg-scrim" aria-hidden />}
           {screen.elements.length === 0 && (
             <div className="phone-empty-hint">Tela vazia</div>
           )}

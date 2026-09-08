@@ -1,10 +1,12 @@
 import "package:flutter/material.dart";
 import "package:url_launcher/url_launcher.dart";
 import "../models/content.dart";
+import "../services/app_settings.dart";
 
 class ElementRenderer extends StatefulWidget {
   final ContentElement element;
   final void Function(String screenId) onNavigate;
+  final AppSettings settings;
   /// true = botão ocupa largura total (Column); false = intrínseco (Positioned)
   final bool expand;
 
@@ -12,6 +14,7 @@ class ElementRenderer extends StatefulWidget {
     super.key,
     required this.element,
     required this.onNavigate,
+    required this.settings,
     this.expand = true,
   });
 
@@ -28,12 +31,17 @@ class _ElementRendererState extends State<ElementRenderer> {
     if (el is TextElement) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: Text(el.content, style: Theme.of(context).textTheme.bodyLarge),
+        child: Text(
+          el.content,
+          style: el.resolveStyle(),
+          textAlign: el.textAlign,
+        ),
       );
     }
     if (el is ButtonElement) {
       final btn = FilledButton(
         onPressed: () async {
+          await widget.settings.feedbackForButton(clickSoundAsset(el.clickSound));
           if (el.action.type == "navigate" && el.action.target.isNotEmpty) {
             widget.onNavigate(el.action.target);
           } else if (el.action.type == "openUrl" && el.action.target.isNotEmpty) {

@@ -1,10 +1,13 @@
 import { useRef, useState } from "react";
 import type { AppContent, ContentElement, Screen } from "../types/content";
 import {
+  CLICK_SOUND_OPTIONS,
+  FONT_FAMILY_OPTIONS,
   ICON_PRESETS,
   clampPct,
   emojiSrc,
   hasLayout,
+  normalizeOpacity,
   uid,
 } from "../types/content";
 import { uploadMedia } from "../api/contentApi";
@@ -38,6 +41,7 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
   };
 
   if (!element) {
+    const opacityPct = Math.round(normalizeOpacity(screen?.backgroundOpacity) * 100);
     return (
       <div>
         <h2>Propriedades</h2>
@@ -83,6 +87,24 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
                   void uploadBg(f);
                 }}
               />
+            </div>
+            <div className="field">
+              <label>Opacidade do fundo ({opacityPct}%)</label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={opacityPct}
+                disabled={!screen.backgroundImage}
+                onChange={(e) => {
+                  const pct = Number(e.target.value);
+                  onUpdateScreen({ backgroundOpacity: Math.round((pct / 100) * 100) / 100 });
+                }}
+              />
+              <p className="muted" style={{ margin: 0, fontSize: "0.75rem" }}>
+                0 = invisível · 100 = total. Campo JSON: backgroundOpacity (0–1).
+              </p>
             </div>
           </>
         ) : (
@@ -227,6 +249,20 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
               />
             </div>
           )}
+          <div className="field">
+            <label>Som do clique</label>
+            <select
+              value={element.clickSound || "none"}
+              onChange={(e) => onChange({ ...element, clickSound: e.target.value })}
+            >
+              {CLICK_SOUND_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+            <p className="muted" style={{ margin: 0, fontSize: "0.75rem" }}>
+              Som/vibração respeitam as preferências do app publicado (engrenagem: Silenciar / Som / Vibração).
+            </p>
+          </div>
         </>
       )}
 
@@ -340,10 +376,89 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
       )}
 
       {element.type === "text" && (
-        <div className="field">
-          <label>Conteúdo</label>
-          <textarea value={element.content} onChange={(e) => onChange({ ...element, content: e.target.value })} />
-        </div>
+        <>
+          <div className="field">
+            <label>Conteúdo</label>
+            <textarea value={element.content} onChange={(e) => onChange({ ...element, content: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Fonte</label>
+            <select
+              value={element.fontFamily || "system"}
+              onChange={(e) => onChange({ ...element, fontFamily: e.target.value })}
+            >
+              {FONT_FAMILY_OPTIONS.map((f) => (
+                <option key={f.id} value={f.id}>{f.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Tamanho ({element.fontSize ?? 16}px)</label>
+            <input
+              type="range"
+              min={10}
+              max={48}
+              step={1}
+              value={element.fontSize ?? 16}
+              onChange={(e) => onChange({ ...element, fontSize: Number(e.target.value) })}
+            />
+          </div>
+          <div className="field">
+            <label>Peso</label>
+            <select
+              value={String(element.fontWeight ?? 400)}
+              onChange={(e) => onChange({ ...element, fontWeight: Number(e.target.value) })}
+            >
+              <option value="400">Normal (400)</option>
+              <option value="500">Médio (500)</option>
+              <option value="600">Semi-negrito (600)</option>
+              <option value="700">Negrito (700)</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Cor</label>
+            <div className="row">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(element.color || "") ? element.color! : "#e2e8f0"}
+                onChange={(e) => onChange({ ...element, color: e.target.value })}
+                style={{ width: 48, padding: 2, flex: "0 0 auto" }}
+              />
+              <input
+                value={element.color || "#e2e8f0"}
+                onChange={(e) => onChange({ ...element, color: e.target.value })}
+                placeholder="#e2e8f0"
+              />
+            </div>
+          </div>
+          <div className="field">
+            <label>Alinhamento</label>
+            <select
+              value={element.textAlign || "left"}
+              onChange={(e) =>
+                onChange({
+                  ...element,
+                  textAlign: e.target.value as "left" | "center" | "right",
+                })
+              }
+            >
+              <option value="left">Esquerda</option>
+              <option value="center">Centro</option>
+              <option value="right">Direita</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Altura da linha ({(element.lineHeight ?? 1.45).toFixed(2)})</label>
+            <input
+              type="range"
+              min={1}
+              max={2.5}
+              step={0.05}
+              value={element.lineHeight ?? 1.45}
+              onChange={(e) => onChange({ ...element, lineHeight: Number(e.target.value) })}
+            />
+          </div>
+        </>
       )}
 
       {element.type === "checklist" && (

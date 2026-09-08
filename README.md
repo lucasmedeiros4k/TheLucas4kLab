@@ -4,8 +4,8 @@ Monorepo da **Liga Acadêmica de Urgência e Emergência Médica (LAUEM)**.
 
 Arquitetura (estilo The Sims / app-builder):
 
-- **Editor web externo** (`apps/editor`): monta telas, botões, **imagens/logos/ícones**, vídeos, checklists e textos (pt-BR), com **plano de fundo por tela**.
-- **App Flutter somente leitura** (`apps/liga_app`): carrega `content/published.json` + mídia em `assets/media/`.
+- **Editor web externo** (`apps/editor`): monta telas, botões, **imagens/logos/ícones**, vídeos, checklists e textos (pt-BR), com **plano de fundo por tela** (opacidade), formatação de texto e som de clique nos botões.
+- **App Flutter somente leitura** (`apps/liga_app`): carrega `content/published.json` + mídia em `assets/media/` + sons em `assets/sounds/`.
 - **Conteúdo** em `content/`: `draft.json` (editável), `published.json` (publicado) e `content/media/` (uploads).
 
 O repositório começa **quase vazio** (só uma tela "Início" sem elementos). Nenhum conteúdo clínico de emergência/AVC vem pré-preenchido — você constrói tudo no editor.
@@ -43,6 +43,13 @@ Sandbox tipo celular no meio, ferramentas nas laterais (bem simples / "bobinho")
 - **Arrastar e soltar**: salva `x`/`y`/`w` em % (0–100). Sem layout = empilha em coluna.
 - **Preview**: navega entre telas; no modo edição, clicar seleciona.
 - Topo: **Salvar rascunho**, **Publicar**, **Preview**
+
+Campos novos no inspetor (compatíveis com rascunhos antigos — defaults se ausentes):
+
+1. **Opacidade do fundo** (slider 0–100% → JSON `backgroundOpacity` 0-1)
+2. **Texto**: fonte (system + Google Fonts livres), samanho, peso, cor, alinhamento, altura da linha
+3. **Botão → Som do clique**: nenhum / clique / pop / beep (assets no app). Preferências som/vibração ficam **no app publicado** (engrenagem), não no JSON.
+
 
 ## Imagens e mídia
 
@@ -83,11 +90,14 @@ flutter run -d linux
 
 O app:
 
-- Renderiza telas do JSON publicado (plano de fundo + imagens)
+- Renderiza telas do JSON publicado (plano de fundo com opacidade + imagens)
+- Aplica formatacao de texto (google_fonts)
 - Com x/y: Stack+Positioned; sem layout: Column
 - Navega com pilha em botões `navigate`
 - Abre URLs com `url_launcher`
 - Checklist com estado local efêmero
+- Sons de botao + vibracao (HapticFeedback) se habilitados
+- Engrenagem: Silenciar tudo / Som / Vibracao (SharedPreferences)
 - Mostra o `disclaimer` em banner
 - Estado vazio se não houver telas/elementos
 
@@ -103,12 +113,13 @@ O app:
       "id": "home",
       "title": "Início",
       "backgroundImage": "/media/fundo.png",
+      "backgroundOpacity": 0.85,
       "elements": [
-        { "id": "btn1", "type": "button", "label": "Ir", "action": { "type": "navigate", "target": "outra" } },
+        { "id": "btn1", "type": "button", "label": "Ir", "clickSound": "click", "action": { "type": "navigate", "target": "outra" } },
         { "id": "img1", "type": "image", "src": "/media/logo.png", "alt": "Logo", "fit": "contain", "role": "logo" },
         { "id": "vid1", "type": "video", "url": "https://example.com", "title": "Opcional" },
         { "id": "chk1", "type": "checklist", "title": "Lista", "items": [{ "id": "i1", "label": "Item" }] },
-        { "id": "txt1", "type": "text", "content": "Parágrafo" }
+        { "id": "txt1", "type": "text", "content": "Parágrafo", "fontFamily": "Roboto", "fontSize": 16, "fontWeight": 400, "color": "#e2e8f0", "textAlign": "left", "lineHeight": 1.45 }
       ]
     }
   ]
@@ -116,6 +127,15 @@ O app:
 ```
 
 x/y/w opcionais (% 0-100). Sem eles, empilha em coluna.
+
+Campos novos sao opcionais (defaults se faltarem no draft antigo):
+
+- backgroundOpacity (tela): default 1; aceita 0-1 ou 0-100
+- texto: fontFamily (system, Roboto, Open Sans, Lato, Nunito, Montserrat), fontSize, fontWeight, color, textAlign, lineHeight
+- botao: clickSound (none | click | pop | beep)
+
+Preferencias soundEnabled / vibrationEnabled NAO entram no JSON — vivem no aparelho via SharedPreferences.
+
 
 ## Estrutura
 
@@ -132,6 +152,7 @@ TheLucas4kLab/
   apps/liga_app/
     assets/content/
     assets/media/
+    assets/sounds/
 ```
 
 ## Plataformas

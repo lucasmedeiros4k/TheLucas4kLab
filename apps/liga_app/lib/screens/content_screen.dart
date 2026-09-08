@@ -1,58 +1,81 @@
 import "package:flutter/material.dart";
 import "../models/content.dart";
+import "../services/app_settings.dart";
 import "../widgets/element_renderer.dart";
+import "../widgets/settings_drawer.dart";
 
 class ContentScreen extends StatelessWidget {
   final AppContent content;
   final AppScreen screen;
+  final AppSettings settings;
 
-  const ContentScreen({super.key, required this.content, required this.screen});
+  const ContentScreen({
+    super.key,
+    required this.content,
+    required this.screen,
+    required this.settings,
+  });
 
   @override
   Widget build(BuildContext context) {
     final bg = screen.backgroundImage;
-    DecorationImage? bgImage;
+    Widget? bgWidget;
     if (bg != null && bg.isNotEmpty && !MediaPath.isEmoji(bg)) {
+      ImageProvider? provider;
       if (MediaPath.isNetwork(bg)) {
-        bgImage = DecorationImage(
-          image: NetworkImage(bg),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.35),
-            BlendMode.darken,
-          ),
-        );
+        provider = NetworkImage(bg);
       } else {
         final asset = MediaPath.assetPath(bg);
-        if (asset != null) {
-          bgImage = DecorationImage(
-            image: AssetImage(asset),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withValues(alpha: 0.35),
-              BlendMode.darken,
+        if (asset != null) provider = AssetImage(asset);
+      }
+      if (provider != null) {
+        bgWidget = Opacity(
+          opacity: screen.backgroundOpacity,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: provider,
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: 0.25),
+                  BlendMode.darken,
+                ),
+              ),
             ),
-          );
-        }
+            child: const SizedBox.expand(),
+          ),
+        );
       }
     }
 
     return Scaffold(
       appBar: AppBar(
         title: Text(screen.title),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          image: bgImage,
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: _ScreenBody(
-            key: ValueKey(screen.id),
-            content: content,
-            screen: screen,
+        actions: [
+          Builder(
+            builder: (ctx) => IconButton(
+              tooltip: "Configurações",
+              icon: const Icon(Icons.settings),
+              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+            ),
           ),
-        ),
+        ],
+      ),
+      endDrawer: SettingsDrawer(settings: settings),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (bgWidget != null) Positioned.fill(child: bgWidget),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: _ScreenBody(
+              key: ValueKey(screen.id),
+              content: content,
+              screen: screen,
+              settings: settings,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -61,8 +84,14 @@ class ContentScreen extends StatelessWidget {
 class _ScreenBody extends StatelessWidget {
   final AppContent content;
   final AppScreen screen;
+  final AppSettings settings;
 
-  const _ScreenBody({super.key, required this.content, required this.screen});
+  const _ScreenBody({
+    super.key,
+    required this.content,
+    required this.screen,
+    required this.settings,
+  });
 
   void _navigate(BuildContext context, String id) {
     final next = content.screenById(id);
@@ -74,7 +103,7 @@ class _ScreenBody extends StatelessWidget {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ContentScreen(content: content, screen: next),
+        builder: (_) => ContentScreen(content: content, screen: next, settings: settings),
       ),
     );
   }
@@ -118,6 +147,7 @@ class _ScreenBody extends StatelessWidget {
             (el) => ElementRenderer(
               element: el,
               expand: true,
+              settings: settings,
               onNavigate: (id) => _navigate(context, id),
             ),
           ),
@@ -156,6 +186,7 @@ class _ScreenBody extends StatelessWidget {
                       (el) => ElementRenderer(
                         element: el,
                         expand: true,
+                        settings: settings,
                         onNavigate: (id) => _navigate(context, id),
                       ),
                     ),
@@ -176,6 +207,7 @@ class _ScreenBody extends StatelessWidget {
                 child: ElementRenderer(
                   element: el,
                   expand: width != null,
+                  settings: settings,
                   onNavigate: (id) => _navigate(context, id),
                 ),
               );

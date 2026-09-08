@@ -1,3 +1,6 @@
+import "package:flutter/material.dart";
+import "package:google_fonts/google_fonts.dart";
+
 class AppContent {
   final int version;
   final String disclaimer;
@@ -35,12 +38,15 @@ class AppScreen {
   final String id;
   final String title;
   final String? backgroundImage;
+  /// Opacidade da imagem de fundo (0–1). Ausente / inválido = 1.
+  final double backgroundOpacity;
   final List<ContentElement> elements;
 
   const AppScreen({
     required this.id,
     required this.title,
     this.backgroundImage,
+    this.backgroundOpacity = 1,
     required this.elements,
   });
 
@@ -53,9 +59,20 @@ class AppScreen {
       id: json["id"] as String? ?? "",
       title: json["title"] as String? ?? "",
       backgroundImage: (bg != null && bg.isNotEmpty) ? bg : null,
+      backgroundOpacity: normalizeOpacity(json["backgroundOpacity"]),
       elements: elements,
     );
   }
+}
+
+/// Aceita 0–1 ou 0–100 (legado). Default 1.
+double normalizeOpacity(dynamic v) {
+  if (v == null) return 1;
+  if (v is! num) return 1;
+  var n = v.toDouble();
+  if (n > 1) n = n / 100;
+  if (n.isNaN) return 1;
+  return n.clamp(0.0, 1.0);
 }
 
 sealed class ContentElement {
@@ -107,10 +124,14 @@ class ButtonAction {
 class ButtonElement extends ContentElement {
   final String label;
   final ButtonAction action;
+  /// none | click | pop | beep | caminho de asset
+  final String clickSound;
+
   const ButtonElement({
     required super.id,
     required this.label,
     required this.action,
+    this.clickSound = "none",
     super.x,
     super.y,
     super.w,
@@ -119,6 +140,9 @@ class ButtonElement extends ContentElement {
         id: json["id"] as String? ?? "",
         label: json["label"] as String? ?? "Botão",
         action: ButtonAction.fromJson(Map<String, dynamic>.from(json["action"] as Map? ?? {})),
+        clickSound: (json["clickSound"] as String?)?.trim().isNotEmpty == true
+            ? (json["clickSound"] as String).trim()
+            : "none",
         x: ContentElement._pct(json["x"]),
         y: ContentElement._pct(json["y"]),
         w: ContentElement._pct(json["w"]),
@@ -181,20 +205,97 @@ class ChecklistElement extends ContentElement {
 
 class TextElement extends ContentElement {
   final String content;
+  final String fontFamily;
+  final double fontSize;
+  final FontWeight fontWeight;
+  final Color color;
+  final TextAlign textAlign;
+  final double lineHeight;
+
   const TextElement({
     required super.id,
     required this.content,
+    this.fontFamily = "system",
+    this.fontSize = 16,
+    this.fontWeight = FontWeight.w400,
+    this.color = const Color(0xFFE2E8F0),
+    this.textAlign = TextAlign.left,
+    this.lineHeight = 1.45,
     super.x,
     super.y,
     super.w,
   });
-  factory TextElement.fromJson(Map<String, dynamic> json) => TextElement(
-        id: json["id"] as String? ?? "",
-        content: json["content"] as String? ?? "",
-        x: ContentElement._pct(json["x"]),
-        y: ContentElement._pct(json["y"]),
-        w: ContentElement._pct(json["w"]),
-      );
+
+  factory TextElement.fromJson(Map<String, dynamic> json) {
+    return TextElement(
+      id: json["id"] as String? ?? "",
+      content: json["content"] as String? ?? "",
+      fontFamily: json["fontFamily"] as String? ?? "system",
+      fontSize: (json["fontSize"] as num?)?.toDouble() ?? 16,
+      fontWeight: _parseWeight(json["fontWeight"]),
+      color: _parseColor(json["color"]) ?? const Color(0xFFE2E8F0),
+      textAlign: _parseAlign(json["textAlign"]),
+      lineHeight: (json["lineHeight"] as num?)?.toDouble() ?? 1.45,
+      x: ContentElement._pct(json["x"]),
+      y: ContentElement._pct(json["y"]),
+      w: ContentElement._pct(json["w"]),
+    );
+  }
+
+  TextStyle resolveStyle() {
+    final base = TextStyle(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: lineHeight,
+    );
+    switch (fontFamily) {
+      case "Roboto":
+        return GoogleFonts.roboto(textStyle: base);
+      case "Open Sans":
+        return GoogleFonts.openSans(textStyle: base);
+      case "Lato":
+        return GoogleFonts.lato(textStyle: base);
+      case "Nunito":
+        return GoogleFonts.nunito(textStyle: base);
+      case "Montserrat":
+        return GoogleFonts.montserrat(textStyle: base);
+      case "system":
+      default:
+        return base;
+    }
+  }
+
+  static FontWeight _parseWeight(dynamic v) {
+    if (v == null) return FontWeight.w400;
+    final n = v is num ? v.toInt() : int.tryParse(v.toString()) ?? 400;
+    return FontWeight.values.firstWhere(
+      (w) => w.value == n,
+      orElse: () => FontWeight.w400,
+    );
+  }
+
+  static Color? _parseColor(dynamic v) {
+    if (v is! String || v.isEmpty) return null;
+    var s = v.trim();
+    if (s.startsWith("#")) s = s.substring(1);
+    if (s.length == 6) s = "FF$s";
+    if (s.length != 8) return null;
+    final n = int.tryParse(s, radix: 16);
+    if (n == null) return null;
+    return Color(n);
+  }
+
+  static TextAlign _parseAlign(dynamic v) {
+    switch (v) {
+      case "center":
+        return TextAlign.center;
+      case "right":
+        return TextAlign.right;
+      default:
+        return TextAlign.left;
+    }
+  }
 }
 
 class ImageElement extends ContentElement {
@@ -267,4 +368,17 @@ class MediaPath {
 
   static bool isNetwork(String src) =>
       src.startsWith("http://") || src.startsWith("https://");
+}
+
+/// Resolve preset de som → asset path (ou null se none).
+String? clickSoundAsset(String? clickSound) {
+  if (clickSound == null || clickSound.isEmpty || clickSound == "none") return null;
+  const presets = {
+    "click": "assets/sounds/click.wav",
+    "pop": "assets/sounds/pop.wav",
+    "beep": "assets/sounds/beep.wav",
+  };
+  if (presets.containsKey(clickSound)) return presets[clickSound];
+  if (clickSound.startsWith("assets/")) return clickSound;
+  return null;
 }

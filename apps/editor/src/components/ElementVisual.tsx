@@ -1,6 +1,8 @@
+import type { CSSProperties } from "react";
 import type { ContentElement } from "../types/content";
 import {
   emojiFromSrc,
+  fontCss,
   isEmojiSrc,
   resolveMediaSrc,
 } from "../types/content";
@@ -35,7 +37,19 @@ export function ElementVisual({
   }
 
   if (el.type === "text") {
-    return <p className="phone-text">{el.content || "Texto"}</p>;
+    const style: CSSProperties = {
+      fontFamily: fontCss(el.fontFamily),
+      fontSize: el.fontSize != null ? `${el.fontSize}px` : undefined,
+      fontWeight: el.fontWeight ?? undefined,
+      color: el.color || undefined,
+      textAlign: el.textAlign || "left",
+      lineHeight: el.lineHeight ?? undefined,
+    };
+    return (
+      <p className="phone-text" style={style}>
+        {el.content || "Texto"}
+      </p>
+    );
   }
 
   if (el.type === "image") {
