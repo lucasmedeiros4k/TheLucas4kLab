@@ -60,6 +60,16 @@ export default function App() {
     }));
   };
 
+  const updateScreen = (patch: Partial<Screen>) => {
+    if (!selectedScreen) return;
+    updateContent((prev) => ({
+      ...prev,
+      screens: prev.screens.map((s) =>
+        s.id === selectedScreen.id ? { ...s, ...patch } : s
+      ),
+    }));
+  };
+
   const removeScreen = (id: string) => {
     updateContent((prev) => {
       if (prev.screens.length <= 1) return prev;
@@ -78,11 +88,21 @@ export default function App() {
     if (!selectedScreen) return;
     let el: ContentElement;
     if (type === "button") {
-      el = { id: uid("btn"), type, label: "Botão", action: { type: "navigate", target: content?.homeScreenId || "home" } };
+      // Sem destino padrão — o usuário escolhe no inspetor
+      el = { id: uid("btn"), type, label: "Botão", action: { type: "navigate", target: "" } };
     } else if (type === "video") {
       el = { id: uid("vid"), type, url: "", title: "Vídeo" };
     } else if (type === "checklist") {
       el = { id: uid("chk"), type, title: "Checklist", items: [{ id: uid("item"), label: "Item" }] };
+    } else if (type === "image") {
+      el = {
+        id: uid("img"),
+        type: "image",
+        src: "",
+        alt: "",
+        fit: "contain",
+        role: "photo",
+      };
     } else {
       el = { id: uid("txt"), type, content: "Texto" };
     }
@@ -194,14 +214,17 @@ export default function App() {
             selectedElementId={selectedElementId}
             onSelectElement={setSelectedElementId}
             onRenameScreen={(title) => selectedScreen && renameScreen(selectedScreen.id, title)}
+            onUpdateScreen={updateScreen}
             onAddElement={addElement}
           />
         </main>
         <aside className="panel">
           <Inspector
             content={content}
+            screen={selectedScreen}
             element={selectedElement}
             onChange={updateElement}
+            onUpdateScreen={updateScreen}
             onRemove={() => selectedElement && removeElement(selectedElement.id)}
           />
         </aside>

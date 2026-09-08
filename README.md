@@ -4,9 +4,9 @@ Monorepo da **Liga Acadêmica de Urgência e Emergência Médica (LAUEM)**.
 
 Arquitetura (estilo The Sims / app-builder):
 
-- **Editor web externo** (`apps/editor`): monta telas, botões, vídeos, checklists e textos (pt-BR).
-- **App Flutter somente leitura** (`apps/liga_app`): carrega apenas `content/published.json` (via asset).
-- **Conteúdo** em `content/`: `draft.json` (editável) e `published.json` (publicado).
+- **Editor web externo** (`apps/editor`): monta telas, botões, **imagens/logos/ícones**, vídeos, checklists e textos (pt-BR), com **plano de fundo por tela**.
+- **App Flutter somente leitura** (`apps/liga_app`): carrega `content/published.json` + mídia em `assets/media/`.
+- **Conteúdo** em `content/`: `draft.json` (editável), `published.json` (publicado) e `content/media/` (uploads).
 
 O repositório começa **quase vazio** (só uma tela "Início" sem elementos). Nenhum conteúdo clínico de emergência/AVC vem pré-preenchido — você constrói tudo no editor.
 
@@ -28,15 +28,31 @@ Abra `http://localhost:5173`.
 O servidor (`server.mjs`) serve a UI (Vite em modo middleware) e a API:
 
 - `GET/PUT /api/draft` — ler/salvar `content/draft.json`
-- `POST /api/publish` — copia draft → published e sincroniza o asset do Flutter
+- `POST /api/publish` — copia draft → published, sincroniza JSON + `content/media` → Flutter assets
 - `GET /api/published` — lê o publicado
+- `POST /api/media` — upload multipart (`file`) → `content/media/` e retorna `{ url: "/media/arquivo" }`
+- `GET /media/*` — serve arquivos de `content/media/`
 
 ### UX do editor
 
 - Esquerda: lista de telas + **Adicionar tela**
-- Centro: canvas da tela + botões para adicionar elementos
-- Direita: inspetor de propriedades
+- Centro: canvas da tela + plano de fundo + botões (**Adicionar imagem** incluso)
+- Direita: inspetor (URL/upload, alt, fit, role logo|icon|photo, atalhos emoji)\n- Botões novos começam **sem destino** (escolha no inspetor)
 - Topo: **Salvar rascunho**, **Publicar**, **Preview**
+
+## Imagens e mídia
+
+1. URL https ou upload PNG/JPG/GIF/WEBP/SVG no canvas/inspetor.
+2. Uploads em content/media/; JSON usa /media/nome.ext.
+3. Publicar copia midia para apps/liga_app/assets/media/.
+4. Flutter: http(s)=Image.network; /media/=Image.asset; emoji:=texto.
+
+## Atualizar uma cópia ZIP local
+
+1. Baixe ZIP no GitHub ou atualize o clone.
+2. Preserve content/draft.json e content/media/.
+3. Reinstale deps do editor e suba o servidor.
+4. flutter pub get e rode o app após Publicar.
 
 ## Publicar sem a UI
 
@@ -63,7 +79,7 @@ flutter run -d linux
 
 O app:
 
-- Renderiza telas do JSON publicado
+- Renderiza telas do JSON publicado (plano de fundo + imagens)
 - Navega com pilha em botões `navigate`
 - Abre URLs com `url_launcher`
 - Checklist com estado local efêmero
@@ -81,8 +97,10 @@ O app:
     {
       "id": "home",
       "title": "Início",
+      "backgroundImage": "/media/fundo.png",
       "elements": [
         { "id": "btn1", "type": "button", "label": "Ir", "action": { "type": "navigate", "target": "outra" } },
+        { "id": "img1", "type": "image", "src": "/media/logo.png", "alt": "Logo", "fit": "contain", "role": "logo" },
         { "id": "vid1", "type": "video", "url": "https://example.com", "title": "Opcional" },
         { "id": "chk1", "type": "checklist", "title": "Lista", "items": [{ "id": "i1", "label": "Item" }] },
         { "id": "txt1", "type": "text", "content": "Parágrafo" }
@@ -100,10 +118,13 @@ TheLucas4kLab/
   STATUS.md
   content/draft.json
   content/published.json
+  content/media/
   scripts/publish.mjs
   scripts/sync-flutter.mjs
   apps/editor/
   apps/liga_app/
+    assets/content/
+    assets/media/
 ```
 
 ## Plataformas

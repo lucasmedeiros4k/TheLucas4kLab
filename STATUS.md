@@ -30,3 +30,8 @@ Publicacao: botao no editor ou scripts publish.mjs + sync-flutter.mjs.
 ## Criterios: pasta OK; editor OK; app le published OK; README pt-BR OK.
 
 Extra: build web release do app OK (build/web).
+
+## Midia / imagens (2026-09-08)
+
+- backgroundImage por tela; elemento image (role logo|icon|photo); upload /api/media; sync assets/media no publish.
+- Botao novo sem destino padrao.

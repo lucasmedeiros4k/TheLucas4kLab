@@ -31,3 +31,11 @@ export async function publishDraft(): Promise<{ message?: string }> {
 export async function fetchPublished(): Promise<AppContent> {
   return handle<AppContent>(await fetch("/api/published"));
 }
+
+export async function uploadMedia(file: File): Promise<{ url: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  return handle<{ url: string }>(
+    await fetch("/api/media", { method: "POST", body: form })
+  );
+}

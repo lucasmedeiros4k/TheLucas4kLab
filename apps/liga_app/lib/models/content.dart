@@ -34,17 +34,25 @@ class AppContent {
 class AppScreen {
   final String id;
   final String title;
+  final String? backgroundImage;
   final List<ContentElement> elements;
 
-  const AppScreen({required this.id, required this.title, required this.elements});
+  const AppScreen({
+    required this.id,
+    required this.title,
+    this.backgroundImage,
+    required this.elements,
+  });
 
   factory AppScreen.fromJson(Map<String, dynamic> json) {
     final elements = (json["elements"] as List? ?? [])
         .map((e) => ContentElement.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
+    final bg = json["backgroundImage"] as String?;
     return AppScreen(
       id: json["id"] as String? ?? "",
       title: json["title"] as String? ?? "",
+      backgroundImage: (bg != null && bg.isNotEmpty) ? bg : null,
       elements: elements,
     );
   }
@@ -65,6 +73,8 @@ sealed class ContentElement {
         return ChecklistElement.fromJson(json);
       case "text":
         return TextElement.fromJson(json);
+      case "image":
+        return ImageElement.fromJson(json);
       default:
         return TextElement(id: json["id"] as String? ?? "unknown", content: "Elemento desconhecido: $type");
     }
@@ -133,4 +143,70 @@ class TextElement extends ContentElement {
         id: json["id"] as String? ?? "",
         content: json["content"] as String? ?? "",
       );
+}
+
+class ImageElement extends ContentElement {
+  final String src;
+  final String? alt;
+  final String fit; // cover | contain
+  final double? width;
+  final double? height;
+  final String? role; // logo | icon | photo
+
+  const ImageElement({
+    required super.id,
+    required this.src,
+    this.alt,
+    this.fit = "contain",
+    this.width,
+    this.height,
+    this.role,
+  });
+
+  factory ImageElement.fromJson(Map<String, dynamic> json) => ImageElement(
+        id: json["id"] as String? ?? "",
+        src: json["src"] as String? ?? "",
+        alt: json["alt"] as String?,
+        fit: json["fit"] as String? ?? "contain",
+        width: (json["width"] as num?)?.toDouble(),
+        height: (json["height"] as num?)?.toDouble(),
+        role: json["role"] as String?,
+      );
+
+  bool get isEmoji => src.startsWith("emoji:");
+  String get emojiChar => isEmoji ? src.substring(6) : "";
+
+  /// Caminho de asset Flutter para /media/arquivo → assets/media/arquivo
+  String? get assetPath {
+    if (src.startsWith("/media/")) {
+      return "assets/media/${src.substring("/media/".length)}";
+    }
+    if (src.startsWith("media/")) {
+      return "assets/$src";
+    }
+    return null;
+  }
+
+  bool get isNetwork =>
+      src.startsWith("http://") || src.startsWith("https://");
+}
+
+/// Utilitário para plano de fundo da tela (mesmas regras de ImageElement.src).
+class MediaPath {
+  static bool isEmoji(String src) => src.startsWith("emoji:");
+  static String emojiChar(String src) =>
+      isEmoji(src) ? src.substring(6) : "";
+
+  static String? assetPath(String src) {
+    if (src.startsWith("/media/")) {
+      return "assets/media/${src.substring("/media/".length)}";
+    }
+    if (src.startsWith("media/")) {
+      return "assets/$src";
+    }
+    return null;
+  }
+
+  static bool isNetwork(String src) =>
+      src.startsWith("http://") || src.startsWith("https://");
 }

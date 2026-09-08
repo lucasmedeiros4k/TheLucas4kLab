@@ -49,6 +49,12 @@ class _ElementRendererState extends State<ElementRenderer> {
         ),
       );
     }
+    if (el is ImageElement) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _buildImage(el),
+      );
+    }
     if (el is VideoElement) {
       return Card(
         margin: const EdgeInsets.only(bottom: 12),
@@ -92,5 +98,60 @@ class _ElementRendererState extends State<ElementRenderer> {
       );
     }
     return const SizedBox.shrink();
+  }
+
+  Widget _buildImage(ImageElement el) {
+    if (el.src.isEmpty) {
+      return const Text("Imagem sem fonte", style: TextStyle(color: Colors.grey));
+    }
+    if (el.isEmoji) {
+      final size = el.role == "icon" ? 40.0 : (el.width ?? 56.0);
+      return Center(
+        child: Text(el.emojiChar, style: TextStyle(fontSize: size)),
+      );
+    }
+
+    final fit = el.fit == "cover" ? BoxFit.cover : BoxFit.contain;
+    final w = el.width;
+    final h = el.height ?? (el.role == "icon" ? 48.0 : (el.role == "logo" ? 96.0 : null));
+
+    Widget img;
+    if (el.isNetwork) {
+      img = Image.network(
+        el.src,
+        fit: fit,
+        width: w,
+        height: h,
+        errorBuilder: (context, error, stackTrace) => _broken(el.alt),
+      );
+    } else {
+      final asset = el.assetPath;
+      if (asset == null) {
+        return _broken(el.alt);
+      }
+      img = Image.asset(
+        asset,
+        fit: fit,
+        width: w,
+        height: h,
+        errorBuilder: (context, error, stackTrace) => _broken(el.alt),
+      );
+    }
+
+    if (el.role == "logo" || el.role == "icon") {
+      return Center(child: img);
+    }
+    return SizedBox(width: double.infinity, child: img);
+  }
+
+  Widget _broken(String? alt) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(alt?.isNotEmpty == true ? alt! : "Imagem indisponível"),
+    );
   }
 }
