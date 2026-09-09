@@ -22,6 +22,13 @@ void main() {
     expect(t.fontSize, 16);
     final b = c.screens.first.elements[1] as ButtonElement;
     expect(b.clickSound, "none");
+    expect(b.h, isNull);
+    expect(b.locked, isFalse);
+    final withH = ContentElement.fromJson({
+      "id": "i", "type": "image", "src": "", "x": 10, "y": 10, "w": 50, "h": 30, "locked": true,
+    }) as ImageElement;
+    expect(withH.h, 30);
+    expect(withH.locked, isTrue);
     final s2 = AppScreen.fromJson({"id": "a", "title": "A", "backgroundOpacity": 80, "elements": []});
     expect(s2.backgroundOpacity, 0.8);
   });

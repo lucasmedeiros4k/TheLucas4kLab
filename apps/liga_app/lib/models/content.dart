@@ -81,8 +81,19 @@ sealed class ContentElement {
   final double? x;
   final double? y;
   final double? w;
+  /// Altura em % do canvas. Ausente = altura intrínseca.
+  final double? h;
+  /// Trava no editor; app ignora (só leitura).
+  final bool locked;
 
-  const ContentElement({required this.id, this.x, this.y, this.w});
+  const ContentElement({
+    required this.id,
+    this.x,
+    this.y,
+    this.w,
+    this.h,
+    this.locked = false,
+  });
 
   bool get hasLayout => x != null && y != null;
 
@@ -135,6 +146,8 @@ class ButtonElement extends ContentElement {
     super.x,
     super.y,
     super.w,
+    super.h,
+    super.locked,
   });
   factory ButtonElement.fromJson(Map<String, dynamic> json) => ButtonElement(
         id: json["id"] as String? ?? "",
@@ -146,6 +159,8 @@ class ButtonElement extends ContentElement {
         x: ContentElement._pct(json["x"]),
         y: ContentElement._pct(json["y"]),
         w: ContentElement._pct(json["w"]),
+        h: ContentElement._pct(json["h"]),
+        locked: json["locked"] == true,
       );
 }
 
@@ -159,6 +174,8 @@ class VideoElement extends ContentElement {
     super.x,
     super.y,
     super.w,
+    super.h,
+    super.locked,
   });
   factory VideoElement.fromJson(Map<String, dynamic> json) => VideoElement(
         id: json["id"] as String? ?? "",
@@ -167,6 +184,8 @@ class VideoElement extends ContentElement {
         x: ContentElement._pct(json["x"]),
         y: ContentElement._pct(json["y"]),
         w: ContentElement._pct(json["w"]),
+        h: ContentElement._pct(json["h"]),
+        locked: json["locked"] == true,
       );
 }
 
@@ -190,6 +209,8 @@ class ChecklistElement extends ContentElement {
     super.x,
     super.y,
     super.w,
+    super.h,
+    super.locked,
   });
   factory ChecklistElement.fromJson(Map<String, dynamic> json) => ChecklistElement(
         id: json["id"] as String? ?? "",
@@ -200,6 +221,8 @@ class ChecklistElement extends ContentElement {
         x: ContentElement._pct(json["x"]),
         y: ContentElement._pct(json["y"]),
         w: ContentElement._pct(json["w"]),
+        h: ContentElement._pct(json["h"]),
+        locked: json["locked"] == true,
       );
 }
 
@@ -224,6 +247,8 @@ class TextElement extends ContentElement {
     super.x,
     super.y,
     super.w,
+    super.h,
+    super.locked,
   });
 
   factory TextElement.fromJson(Map<String, dynamic> json) {
@@ -239,6 +264,8 @@ class TextElement extends ContentElement {
       x: ContentElement._pct(json["x"]),
       y: ContentElement._pct(json["y"]),
       w: ContentElement._pct(json["w"]),
+      h: ContentElement._pct(json["h"]),
+      locked: json["locked"] == true,
     );
   }
 
@@ -317,6 +344,8 @@ class ImageElement extends ContentElement {
     super.x,
     super.y,
     super.w,
+    super.h,
+    super.locked,
   });
 
   factory ImageElement.fromJson(Map<String, dynamic> json) => ImageElement(
@@ -330,6 +359,8 @@ class ImageElement extends ContentElement {
         x: ContentElement._pct(json["x"]),
         y: ContentElement._pct(json["y"]),
         w: ContentElement._pct(json["w"]),
+        h: ContentElement._pct(json["h"]),
+        locked: json["locked"] == true,
       );
 
   bool get isEmoji => src.startsWith("emoji:");

@@ -67,7 +67,21 @@ class ContentScreen extends StatelessWidget {
         children: [
           if (bgWidget != null) Positioned.fill(child: bgWidget),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.04, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
             child: _ScreenBody(
               key: ValueKey(screen.id),
               content: content,
@@ -102,8 +116,23 @@ class _ScreenBody extends StatelessWidget {
       return;
     }
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ContentScreen(content: content, screen: next, settings: settings),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ContentScreen(content: content, screen: next, settings: settings),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.06, 0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 280),
       ),
     );
   }
@@ -200,10 +229,12 @@ class _ScreenBody extends StatelessWidget {
               final left = (el.x! / 100) * w;
               final top = (el.y! / 100) * h;
               final width = el.w != null ? (el.w! / 100) * w : null;
+              final height = el.h != null ? (el.h! / 100) * h : null;
               return Positioned(
                 left: left,
                 top: top,
                 width: width,
+                height: height,
                 child: ElementRenderer(
                   element: el,
                   expand: width != null,

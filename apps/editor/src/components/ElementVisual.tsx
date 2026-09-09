@@ -72,8 +72,9 @@ export function ElementVisual({
         style={{
           objectFit: el.fit || "contain",
           width: "100%",
-          height: el.height ? el.height : "auto",
-          maxHeight: el.role === "icon" ? 56 : 160,
+          height: el.h != null ? "100%" : (el.height ? el.height : "auto"),
+          maxHeight: el.h != null ? "100%" : (el.role === "icon" ? 56 : 160),
+          flex: el.h != null ? 1 : undefined,
         }}
       />
     );

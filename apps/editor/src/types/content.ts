@@ -7,6 +7,10 @@ export type ElementLayout = {
   x?: number;
   y?: number;
   w?: number;
+  /** Altura em % do canvas. Ausente = altura do conteúdo. */
+  h?: number;
+  /** Trava posição/tamanho no canvas (arrasto/resize). */
+  locked?: boolean;
 };
 
 /** Presets de som do botão (assets no Flutter). */
@@ -167,6 +171,12 @@ export function defaultWidthFor(type: ContentElement["type"]): number {
   return 80;
 }
 
+/** Altura padrão opcional (%). Imagem ganha h; outros ficam auto até o usuário definir. */
+export function defaultHeightFor(type: ContentElement["type"]): number | undefined {
+  if (type === "image") return 25;
+  return undefined;
+}
+
 /** Normaliza opacidade 0–1 (aceita legado 0–100). Default 1. */
 export function normalizeOpacity(v: number | undefined | null): number {
   if (v == null || Number.isNaN(Number(v))) return 1;
@@ -188,6 +198,8 @@ export function createElementOfType(
     x: layout?.x,
     y: layout?.y,
     w: layout?.w ?? defaultWidthFor(type),
+    h: layout?.h ?? defaultHeightFor(type),
+    locked: layout?.locked,
   };
   if (type === "button") {
     return {
@@ -246,4 +258,19 @@ export function uid(prefix = "id"): string {
 /** Clamp layout % */
 export function clampPct(n: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, Math.round(n * 10) / 10));
+}
+
+/** Duplica elemento com novo id (itens de checklist também). */
+export function duplicateElement(el: ContentElement): ContentElement {
+  const base = { ...el, id: uid(el.type.slice(0, 3)) };
+  if (base.type === "checklist") {
+    return {
+      ...base,
+      items: base.items.map((it) => ({ ...it, id: uid("item") })),
+    };
+  }
+  // offset leve pra não ficar em cima
+  if (typeof base.x === "number") base.x = clampPct(base.x + 3, 0, 92);
+  if (typeof base.y === "number") base.y = clampPct(base.y + 3, 0, 92);
+  return base;
 }

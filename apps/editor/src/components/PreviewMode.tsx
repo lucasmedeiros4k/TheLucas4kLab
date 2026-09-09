@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { AppContent } from "../types/content";
 import {
   hasLayout,
@@ -13,11 +13,20 @@ type Props = { content: AppContent };
 export function PreviewMode({ content }: Props) {
   const [stack, setStack] = useState<string[]>([content.homeScreenId]);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
+  const [animKey, setAnimKey] = useState(0);
+  const [animClass, setAnimClass] = useState("preview-enter");
   const screenId = stack[stack.length - 1];
   const screen = useMemo(
     () => content.screens.find((s) => s.id === screenId),
     [content, screenId]
   );
+
+  useEffect(() => {
+    setAnimClass("preview-enter");
+    setAnimKey((k) => k + 1);
+    const t = window.setTimeout(() => setAnimClass("preview-enter preview-enter-active"), 20);
+    return () => window.clearTimeout(t);
+  }, [screenId]);
 
   if (!screen) {
     return (
@@ -42,12 +51,28 @@ export function PreviewMode({ content }: Props) {
   const flowEls = screen.elements.filter((el) => !hasLayout(el));
   const absEls = screen.elements.filter((el) => hasLayout(el));
 
+  const goTo = (target: string) => {
+    setStack((s) => [...s, target]);
+  };
+
+  const goBack = () => setStack((s) => s.slice(0, -1));
+
+  const buttonHandler = (el: (typeof screen.elements)[0]) => {
+    if (el.type !== "button") return;
+    if (el.action.type === "navigate") {
+      if (!el.action.target) return;
+      goTo(el.action.target);
+    } else if (el.action.target) {
+      window.open(el.action.target, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <div className="phone-workspace preview-workspace">
       <div className="phone-meta">
         <h1 className="phone-preview-title">{screen.title}</h1>
         {stack.length > 1 && (
-          <button className="btn" type="button" onClick={() => setStack((s) => s.slice(0, -1))}>
+          <button className="btn" type="button" onClick={goBack}>
             Voltar
           </button>
         )}
@@ -59,12 +84,37 @@ export function PreviewMode({ content }: Props) {
         <div className={"phone-stage" + (bgUrl ? " has-bg" : "")}>
           {bgLayerStyle && <div className="phone-bg-layer" style={bgLayerStyle} aria-hidden />}
           {bgUrl && !isEmojiSrc(bgUrl) && <div className="phone-bg-scrim" aria-hidden />}
-          {screen.elements.length === 0 && (
-            <div className="phone-empty-hint">Tela vazia</div>
-          )}
-          <div className="phone-flow">
-            {flowEls.map((el) => (
-              <div key={el.id} className="phone-el">
+          <div key={animKey} className={"preview-screen " + animClass}>
+            {screen.elements.length === 0 && (
+              <div className="phone-empty-hint">Tela vazia</div>
+            )}
+            <div className="phone-flow">
+              {flowEls.map((el) => (
+                <div key={el.id} className="phone-el">
+                  <ElementVisual
+                    el={el}
+                    interactive
+                    checks={checks}
+                    onToggleCheck={(id, checked) =>
+                      setChecks((c) => ({ ...c, [id]: checked }))
+                    }
+                    onButtonClick={() => buttonHandler(el)}
+                  />
+                </div>
+              ))}
+            </div>
+            {absEls.map((el) => (
+              <div
+                key={el.id}
+                className="phone-el abs"
+                style={{
+                  left: `${el.x}%`,
+                  top: `${el.y}%`,
+                  width: el.w != null ? `${el.w}%` : undefined,
+                  height: el.h != null ? `${el.h}%` : undefined,
+                  overflow: el.h != null ? "hidden" : undefined,
+                }}
+              >
                 <ElementVisual
                   el={el}
                   interactive
@@ -72,48 +122,11 @@ export function PreviewMode({ content }: Props) {
                   onToggleCheck={(id, checked) =>
                     setChecks((c) => ({ ...c, [id]: checked }))
                   }
-                  onButtonClick={() => {
-                    if (el.type !== "button") return;
-                    if (el.action.type === "navigate") {
-                      if (!el.action.target) return;
-                      setStack((s) => [...s, el.action.target]);
-                    } else if (el.action.target) {
-                      window.open(el.action.target, "_blank", "noopener,noreferrer");
-                    }
-                  }}
+                  onButtonClick={() => buttonHandler(el)}
                 />
               </div>
             ))}
           </div>
-          {absEls.map((el) => (
-            <div
-              key={el.id}
-              className="phone-el abs"
-              style={{
-                left: `${el.x}%`,
-                top: `${el.y}%`,
-                width: el.w != null ? `${el.w}%` : undefined,
-              }}
-            >
-              <ElementVisual
-                el={el}
-                interactive
-                checks={checks}
-                onToggleCheck={(id, checked) =>
-                  setChecks((c) => ({ ...c, [id]: checked }))
-                }
-                onButtonClick={() => {
-                  if (el.type !== "button") return;
-                  if (el.action.type === "navigate") {
-                    if (!el.action.target) return;
-                    setStack((s) => [...s, el.action.target]);
-                  } else if (el.action.target) {
-                    window.open(el.action.target, "_blank", "noopener,noreferrer");
-                  }
-                }}
-              />
-            </div>
-          ))}
         </div>
         <div className="phone-home-bar" aria-hidden />
       </div>

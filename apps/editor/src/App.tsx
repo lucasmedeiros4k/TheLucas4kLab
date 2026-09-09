@@ -5,7 +5,14 @@ import type {
   ContentElement,
   Screen,
 } from "./types/content";
-import { clampPct, createElementOfType, createEmptyContent, uid } from "./types/content";
+import {
+  clampPct,
+  createElementOfType,
+  createEmptyContent,
+  duplicateElement,
+  hasLayout,
+  uid,
+} from "./types/content";
 import { ScreenList } from "./components/ScreenList";
 import { Canvas } from "./components/Canvas";
 import { Inspector } from "./components/Inspector";
@@ -19,6 +26,8 @@ export default function App() {
   const [preview, setPreview] = useState(false);
   const [status, setStatus] = useState("Carregando...");
   const [busy, setBusy] = useState(false);
+  const [nudgeStep, setNudgeStep] = useState(1);
+  const [showGrid, setShowGrid] = useState(false);
 
   useEffect(() => {
     fetchDraft()
@@ -45,6 +54,19 @@ export default function App() {
   const updateContent = useCallback((updater: (prev: AppContent) => AppContent) => {
     setContent((prev) => (prev ? updater(prev) : prev));
   }, []);
+
+  const mapSelectedElements = useCallback(
+    (mapper: (els: ContentElement[]) => ContentElement[]) => {
+      if (!selectedScreen) return;
+      updateContent((prev) => ({
+        ...prev,
+        screens: prev.screens.map((s) =>
+          s.id === selectedScreen.id ? { ...s, elements: mapper(s.elements) } : s
+        ),
+      }));
+    },
+    [selectedScreen, updateContent]
+  );
 
   const addScreen = () => {
     const id = uid("tela");
@@ -97,7 +119,6 @@ export default function App() {
     setSelectedElementId(el.id);
   };
 
-  /** Clique na ferramenta: coloca no meio com layout */
   const addElement = (type: ContentElement["type"]) => {
     const count = selectedScreen?.elements.length ?? 0;
     const el = createElementOfType(type, {
@@ -107,52 +128,118 @@ export default function App() {
     insertElement(el);
   };
 
-  /** Drop no celular: posição do ponteiro */
   const dropTool = (type: ContentElement["type"], x: number, y: number) => {
     const el = createElementOfType(type, { x, y });
     insertElement(el);
   };
 
   const moveElement = (id: string, x: number, y: number) => {
-    if (!selectedScreen) return;
-    updateContent((prev) => ({
-      ...prev,
-      screens: prev.screens.map((s) =>
-        s.id === selectedScreen.id
-          ? {
-              ...s,
-              elements: s.elements.map((e) =>
-                e.id === id ? { ...e, x, y, w: e.w ?? 80 } : e
-              ),
-            }
-          : s
-      ),
-    }));
+    mapSelectedElements((els) =>
+      els.map((e) => {
+        if (e.id !== id || e.locked) return e;
+        return { ...e, x, y, w: e.w ?? 80 };
+      })
+    );
+  };
+
+  const resizeElement = (
+    id: string,
+    w: number,
+    h: number | undefined,
+    x?: number,
+    y?: number
+  ) => {
+    mapSelectedElements((els) =>
+      els.map((e) => {
+        if (e.id !== id || e.locked) return e;
+        return {
+          ...e,
+          w: clampPct(w, 8, 100),
+          h: h != null ? clampPct(h, 5, 100) : e.h,
+          x: x != null ? clampPct(x, 0, 95) : e.x,
+          y: y != null ? clampPct(y, 0, 95) : e.y,
+        };
+      })
+    );
   };
 
   const updateElement = (element: ContentElement) => {
-    if (!selectedScreen) return;
-    updateContent((prev) => ({
-      ...prev,
-      screens: prev.screens.map((s) =>
-        s.id === selectedScreen.id
-          ? { ...s, elements: s.elements.map((e) => (e.id === element.id ? element : e)) }
-          : s
-      ),
-    }));
+    mapSelectedElements((els) => els.map((e) => (e.id === element.id ? element : e)));
   };
 
   const removeElement = (elementId: string) => {
-    if (!selectedScreen) return;
-    updateContent((prev) => ({
-      ...prev,
-      screens: prev.screens.map((s) =>
-        s.id === selectedScreen.id
-          ? { ...s, elements: s.elements.filter((e) => e.id !== elementId) }
-          : s
-      ),
-    }));
+    mapSelectedElements((els) => els.filter((e) => e.id !== elementId));
     setSelectedElementId(null);
+  };
+
+  const nudgeSelected = useCallback(
+    (dx: number, dy: number) => {
+      if (!selectedElementId) return;
+      mapSelectedElements((els) =>
+        els.map((e) => {
+          if (e.id !== selectedElementId || e.locked) return e;
+          const x0 = e.x ?? 10;
+          const y0 = e.y ?? 10;
+          return {
+            ...e,
+            x: clampPct(x0 + dx, 0, 92),
+            y: clampPct(y0 + dy, 0, 92),
+            w: e.w ?? 80,
+          };
+        })
+      );
+    },
+    [selectedElementId, mapSelectedElements]
+  );
+
+  const duplicateSelected = () => {
+    if (!selectedElement) return;
+    const copy = duplicateElement(selectedElement);
+    insertElement(copy);
+  };
+
+  const bringForward = () => {
+    if (!selectedElementId) return;
+    mapSelectedElements((els) => {
+      const i = els.findIndex((e) => e.id === selectedElementId);
+      if (i < 0 || i >= els.length - 1) return els;
+      const next = [...els];
+      [next[i], next[i + 1]] = [next[i + 1], next[i]];
+      return next;
+    });
+  };
+
+  const sendBackward = () => {
+    if (!selectedElementId) return;
+    mapSelectedElements((els) => {
+      const i = els.findIndex((e) => e.id === selectedElementId);
+      if (i <= 0) return els;
+      const next = [...els];
+      [next[i - 1], next[i]] = [next[i], next[i - 1]];
+      return next;
+    });
+  };
+
+  const alignSelected = (
+    where: "left" | "center" | "right" | "top" | "middle" | "bottom"
+  ) => {
+    if (!selectedElement || selectedElement.locked) return;
+    const w = selectedElement.w ?? 80;
+    const h = selectedElement.h ?? 20;
+    let x = selectedElement.x ?? 10;
+    let y = selectedElement.y ?? 10;
+    if (where === "left") x = 2;
+    if (where === "center") x = clampPct((100 - w) / 2, 0, 92);
+    if (where === "right") x = clampPct(100 - w - 2, 0, 92);
+    if (where === "top") y = 2;
+    if (where === "middle") y = clampPct((100 - h) / 2, 0, 92);
+    if (where === "bottom") y = clampPct(100 - h - 2, 0, 92);
+    // Garante layout abs se ainda empilhado
+    if (!hasLayout(selectedElement)) {
+      updateElement({ ...selectedElement, x, y, w });
+    } else {
+      updateElement({ ...selectedElement, x, y });
+    }
   };
 
   const onSave = async () => {
@@ -249,6 +336,10 @@ export default function App() {
             onRenameScreen={(title) => selectedScreen && renameScreen(selectedScreen.id, title)}
             onDropTool={dropTool}
             onMoveElement={moveElement}
+            onResizeElement={resizeElement}
+            onNudge={nudgeSelected}
+            nudgeStep={nudgeStep}
+            showGrid={showGrid}
           />
         </main>
         <aside className="panel panel-right">
@@ -261,6 +352,15 @@ export default function App() {
               onChange={updateElement}
               onUpdateScreen={updateScreen}
               onRemove={() => selectedElement && removeElement(selectedElement.id)}
+              onDuplicate={duplicateSelected}
+              onBringForward={bringForward}
+              onSendBackward={sendBackward}
+              onAlign={alignSelected}
+              onNudge={nudgeSelected}
+              nudgeStep={nudgeStep}
+              onNudgeStepChange={setNudgeStep}
+              showGrid={showGrid}
+              onShowGridChange={setShowGrid}
             />
           </div>
         </aside>

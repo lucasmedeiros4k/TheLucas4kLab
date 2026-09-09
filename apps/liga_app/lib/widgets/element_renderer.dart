@@ -39,23 +39,11 @@ class _ElementRendererState extends State<ElementRenderer> {
       );
     }
     if (el is ButtonElement) {
-      final btn = FilledButton(
-        onPressed: () async {
-          await widget.settings.feedbackForButton(clickSoundAsset(el.clickSound));
-          if (el.action.type == "navigate" && el.action.target.isNotEmpty) {
-            widget.onNavigate(el.action.target);
-          } else if (el.action.type == "openUrl" && el.action.target.isNotEmpty) {
-            final uri = Uri.tryParse(el.action.target);
-            if (uri != null) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
-          }
-        },
-        child: Text(el.label),
-      );
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: widget.expand ? SizedBox(width: double.infinity, child: btn) : btn,
+        child: widget.expand
+            ? SizedBox(width: double.infinity, child: _PressScaleButton(label: el.label, onPressed: () => _onButton(el)))
+            : _PressScaleButton(label: el.label, onPressed: () => _onButton(el)),
       );
     }
     if (el is ImageElement) {
@@ -109,7 +97,19 @@ class _ElementRendererState extends State<ElementRenderer> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildImage(ImageElement el) {
+  Future<void> _onButton(ButtonElement el) async {
+    await widget.settings.feedbackForButton(clickSoundAsset(el.clickSound));
+    if (el.action.type == "navigate" && el.action.target.isNotEmpty) {
+      widget.onNavigate(el.action.target);
+    } else if (el.action.type == "openUrl" && el.action.target.isNotEmpty) {
+      final uri = Uri.tryParse(el.action.target);
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
+  }
+
+    Widget _buildImage(ImageElement el) {
     if (el.src.isEmpty) {
       return const Text("Imagem sem fonte", style: TextStyle(color: Colors.grey));
     }
@@ -164,3 +164,40 @@ class _ElementRendererState extends State<ElementRenderer> {
     );
   }
 }
+
+/// Escala sutil no toque do botão (opacity + scale).
+class _PressScaleButton extends StatefulWidget {
+  final String label;
+  final Future<void> Function() onPressed;
+
+  const _PressScaleButton({required this.label, required this.onPressed});
+
+  @override
+  State<_PressScaleButton> createState() => _PressScaleButtonState();
+}
+
+class _PressScaleButtonState extends State<_PressScaleButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedScale(
+      scale: _pressed ? 0.96 : 1,
+      duration: const Duration(milliseconds: 100),
+      child: AnimatedOpacity(
+        opacity: _pressed ? 0.88 : 1,
+        duration: const Duration(milliseconds: 100),
+        child: FilledButton(
+          onPressed: () async {
+            setState(() => _pressed = true);
+            await Future<void>.delayed(const Duration(milliseconds: 80));
+            if (mounted) setState(() => _pressed = false);
+            await widget.onPressed();
+          },
+          child: Text(widget.label),
+        ),
+      ),
+    );
+  }
+}
+

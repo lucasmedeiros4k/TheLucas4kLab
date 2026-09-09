@@ -40,7 +40,8 @@ Sandbox tipo celular no meio, ferramentas nas laterais (bem simples / "bobinho")
 - **Esquerda**: lista de telas (como atividades do Android) + **Adicionar tela** / remover / definir início.
 - **Centro**: **preview ao vivo** num frame de celular — fundo, botões, imagens, vídeo, checklist e texto (não é formulário).
 - **Direita**: **Ferramentas** arrastáveis (botão / imagem / vídeo / checklist / texto) + inspetor (X/Y/%, propriedades).
-- **Arrastar e soltar**: salva `x`/`y`/`w` em % (0–100). Sem layout = empilha em coluna.
+- **Arrastar e soltar**: salva `x`/`y`/`w`/`h` em % (0–100). Sem layout = empilha em coluna.
+- **Cruz (D-pad)** + setas do teclado para nudge; **resize** por alças/sliders; frente/trás, duplicar, alinhar, travar, grade.
 - **Preview**: navega entre telas; no modo edição, clicar seleciona.
 - Topo: **Salvar rascunho**, **Publicar**, **Preview**
 
@@ -49,6 +50,7 @@ Campos novos no inspetor (compatíveis com rascunhos antigos — defaults se aus
 1. **Opacidade do fundo** (slider 0–100% → JSON `backgroundOpacity` 0-1)
 2. **Texto**: fonte (system + Google Fonts livres), samanho, peso, cor, alinhamento, altura da linha
 3. **Botão → Som do clique**: nenhum / clique / pop / beep (assets no app). Preferências som/vibração ficam **no app publicado** (engrenagem), não no JSON.
+4. **Altura `h`**, resize, cruz/setas, ordem z, duplicar, alinhar, lock, grade (opcional). Rascunhos antigos sem `h`/`locked` continuam válidos.
 
 
 ## Imagens e mídia

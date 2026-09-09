@@ -19,9 +19,34 @@ type Props = {
   onChange: (element: ContentElement) => void;
   onUpdateScreen: (patch: Partial<Screen>) => void;
   onRemove: () => void;
+  onDuplicate: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
+  onAlign: (where: "left" | "center" | "right" | "top" | "middle" | "bottom") => void;
+  onNudge: (dx: number, dy: number) => void;
+  nudgeStep: number;
+  onNudgeStepChange: (step: number) => void;
+  showGrid: boolean;
+  onShowGridChange: (v: boolean) => void;
 };
 
-export function Inspector({ content, screen, element, onChange, onUpdateScreen, onRemove }: Props) {
+export function Inspector({
+  content,
+  screen,
+  element,
+  onChange,
+  onUpdateScreen,
+  onRemove,
+  onDuplicate,
+  onBringForward,
+  onSendBackward,
+  onAlign,
+  onNudge,
+  nudgeStep,
+  onNudgeStepChange,
+  showGrid,
+  onShowGridChange,
+}: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const bgRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -106,6 +131,30 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
                 0 = invisível · 100 = total. Campo JSON: backgroundOpacity (0–1).
               </p>
             </div>
+            <div className="field">
+              <label className="check-label">
+                <input
+                  type="checkbox"
+                  checked={showGrid}
+                  onChange={(e) => onShowGridChange(e.target.checked)}
+                />
+                Mostrar grade no celular
+              </label>
+            </div>
+            <div className="field">
+              <label>Passo do nudge</label>
+              <select
+                value={String(nudgeStep)}
+                onChange={(e) => onNudgeStepChange(Number(e.target.value))}
+              >
+                <option value="0.5">0,5%</option>
+                <option value="1">1%</option>
+                <option value="5">5%</option>
+              </select>
+              <p className="muted" style={{ margin: 0, fontSize: "0.75rem" }}>
+                Setas / cruz · Shift = 5× o passo
+              </p>
+            </div>
           </>
         ) : (
           <p className="muted">Selecione um elemento no celular.</p>
@@ -127,9 +176,18 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
     }
   };
 
-  const setLayout = (patch: { x?: number; y?: number; w?: number | undefined }) => {
+  const setLayout = (patch: {
+    x?: number;
+    y?: number;
+    w?: number | undefined;
+    h?: number | undefined;
+    locked?: boolean;
+  }) => {
     onChange({ ...element, ...patch });
   };
+
+  const wVal = element.w ?? 80;
+  const hVal = element.h ?? 20;
 
   return (
     <div>
@@ -137,9 +195,78 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
       <div className="muted" style={{ marginBottom: 12 }}>
         Tipo: {element.type}
         {hasLayout(element) ? " · posicionado" : " · empilhado"}
+        {element.locked ? " · 🔒" : ""}
       </div>
 
-      <div className="layout-fields">
+      {/* Controles rápidos */}
+      <div className="edit-toolbar">
+        <button className="btn ghost tiny" type="button" title="Trazer pra frente" onClick={onBringForward}>
+          ▲ Frente
+        </button>
+        <button className="btn ghost tiny" type="button" title="Enviar pra trás" onClick={onSendBackward}>
+          ▼ Trás
+        </button>
+        <button className="btn ghost tiny" type="button" title="Duplicar" onClick={onDuplicate}>
+          ⧉ Dup
+        </button>
+        <button
+          className={"btn ghost tiny" + (element.locked ? " active" : "")}
+          type="button"
+          title="Travar posição"
+          onClick={() => setLayout({ locked: !element.locked })}
+        >
+          {element.locked ? "🔒" : "🔓"}
+        </button>
+      </div>
+
+      <div className="field">
+        <label>Alinhar no celular</label>
+        <div className="align-grid">
+          <button type="button" className="btn ghost tiny" onClick={() => onAlign("left")}>⬅ Esq</button>
+          <button type="button" className="btn ghost tiny" onClick={() => onAlign("center")}>⇔ Centro</button>
+          <button type="button" className="btn ghost tiny" onClick={() => onAlign("right")}>Dir ➡</button>
+          <button type="button" className="btn ghost tiny" onClick={() => onAlign("top")}>⬆ Topo</button>
+          <button type="button" className="btn ghost tiny" onClick={() => onAlign("middle")}>⇕ Meio</button>
+          <button type="button" className="btn ghost tiny" onClick={() => onAlign("bottom")}>Baixo ⬇</button>
+        </div>
+      </div>
+
+      {/* Cruz / D-pad no inspetor */}
+      <div className="field">
+        <label>Mover (cruz)</label>
+        <div className="dpad dpad-inspector" role="group" aria-label="Mover">
+          <button type="button" className="dpad-btn dpad-up" onClick={(e) => onNudge(0, e.shiftKey ? -nudgeStep * 5 : -nudgeStep)}>▲</button>
+          <button type="button" className="dpad-btn dpad-left" onClick={(e) => onNudge(e.shiftKey ? -nudgeStep * 5 : -nudgeStep, 0)}>◀</button>
+          <button type="button" className="dpad-btn dpad-center" disabled>✕</button>
+          <button type="button" className="dpad-btn dpad-right" onClick={(e) => onNudge(e.shiftKey ? nudgeStep * 5 : nudgeStep, 0)}>▶</button>
+          <button type="button" className="dpad-btn dpad-down" onClick={(e) => onNudge(0, e.shiftKey ? nudgeStep * 5 : nudgeStep)}>▼</button>
+        </div>
+      </div>
+
+      <div className="field">
+        <label>Passo do nudge</label>
+        <select
+          value={String(nudgeStep)}
+          onChange={(e) => onNudgeStepChange(Number(e.target.value))}
+        >
+          <option value="0.5">0,5%</option>
+          <option value="1">1%</option>
+          <option value="5">5%</option>
+        </select>
+      </div>
+
+      <div className="field">
+        <label className="check-label">
+          <input
+            type="checkbox"
+            checked={showGrid}
+            onChange={(e) => onShowGridChange(e.target.checked)}
+          />
+          Mostrar grade
+        </label>
+      </div>
+
+      <div className="layout-fields layout-fields-4">
         <div className="field">
           <label>X (%)</label>
           <input
@@ -149,6 +276,7 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
             step={0.5}
             value={element.x ?? ""}
             placeholder="auto"
+            disabled={!!element.locked}
             onChange={(e) =>
               setLayout({
                 x: e.target.value === "" ? undefined : clampPct(Number(e.target.value)),
@@ -166,6 +294,7 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
             step={0.5}
             value={element.y ?? ""}
             placeholder="auto"
+            disabled={!!element.locked}
             onChange={(e) =>
               setLayout({
                 y: e.target.value === "" ? undefined : clampPct(Number(e.target.value)),
@@ -175,28 +304,90 @@ export function Inspector({ content, screen, element, onChange, onUpdateScreen, 
           />
         </div>
         <div className="field">
-          <label>Largura (%)</label>
+          <label>Largura w (%)</label>
           <input
             type="number"
-            min={10}
+            min={8}
             max={100}
             step={1}
             value={element.w ?? ""}
             placeholder="auto"
+            disabled={!!element.locked}
             onChange={(e) =>
               setLayout({
-                w: e.target.value === "" ? undefined : clampPct(Number(e.target.value), 10, 100),
+                w: e.target.value === "" ? undefined : clampPct(Number(e.target.value), 8, 100),
+              })
+            }
+          />
+        </div>
+        <div className="field">
+          <label>Altura h (%)</label>
+          <input
+            type="number"
+            min={5}
+            max={100}
+            step={1}
+            value={element.h ?? ""}
+            placeholder="auto"
+            disabled={!!element.locked}
+            onChange={(e) =>
+              setLayout({
+                h: e.target.value === "" ? undefined : clampPct(Number(e.target.value), 5, 100),
               })
             }
           />
         </div>
       </div>
+
+      <div className="field">
+        <label>Largura ({wVal}%)</label>
+        <input
+          type="range"
+          min={8}
+          max={100}
+          step={1}
+          value={wVal}
+          disabled={!!element.locked}
+          onChange={(e) => setLayout({ w: clampPct(Number(e.target.value), 8, 100) })}
+        />
+      </div>
+      <div className="field">
+        <label>Altura ({element.h != null ? `${hVal}%` : "auto"})</label>
+        <input
+          type="range"
+          min={5}
+          max={100}
+          step={1}
+          value={hVal}
+          disabled={!!element.locked}
+          onChange={(e) => setLayout({ h: clampPct(Number(e.target.value), 5, 100) })}
+        />
+        {element.h != null && (
+          <button
+            className="btn ghost tiny"
+            type="button"
+            style={{ marginTop: 4 }}
+            onClick={() => setLayout({ h: undefined })}
+          >
+            Altura automática
+          </button>
+        )}
+      </div>
+
       {hasLayout(element) && (
         <button
           className="btn ghost"
           type="button"
           style={{ marginBottom: 12 }}
-          onClick={() => onChange({ ...element, x: undefined, y: undefined, w: undefined })}
+          onClick={() =>
+            onChange({
+              ...element,
+              x: undefined,
+              y: undefined,
+              w: undefined,
+              h: undefined,
+            })
+          }
         >
           Voltar ao empilhamento automático
         </button>
