@@ -16,6 +16,9 @@ import {
 import { ScreenList } from "./components/ScreenList";
 import { Canvas } from "./components/Canvas";
 import { Inspector } from "./components/Inspector";
+
+/** Se não aparecer no topo, o Pull não aplicou. */
+const EDITOR_BUILD = "dpad-resize-v2";
 import { PreviewMode } from "./components/PreviewMode";
 import { Toolbox } from "./components/Toolbox";
 
@@ -274,7 +277,7 @@ export default function App() {
       <div className="app-shell">
         <div className="topbar">
           <div className="brand">LAUEM <span>Editor</span></div>
-          <div className="status">{status}</div>
+          <div className="status">{status} · build <strong>{EDITOR_BUILD}</strong></div>
         </div>
       </div>
     );
@@ -300,7 +303,7 @@ export default function App() {
     <div className="app-shell">
       <div className="topbar">
         <div className="brand">LAUEM <span>Editor</span></div>
-        <div className="status">{status}</div>
+        <div className="status">{status} · build <strong>{EDITOR_BUILD}</strong></div>
         <div className="topbar-actions">
           <button className="btn ghost" type="button" disabled={busy} onClick={() => setPreview(true)}>
             Preview

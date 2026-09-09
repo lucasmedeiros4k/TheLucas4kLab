@@ -409,3 +409,14 @@ button { cursor: pointer; }
   font-size: 0.8rem;
   line-height: 1.35;
 }
+
+/* dpad-v2 */
+.phone-with-dpad { align-items: center; gap: 16px; }
+.dpad {
+  width: 120px; height: 120px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 2px solid #38bdf8;
+  border-radius: 16px;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+}
+.dpad-btn { font-size: 1.1rem; min-width: 36px; min-height: 36px; }
