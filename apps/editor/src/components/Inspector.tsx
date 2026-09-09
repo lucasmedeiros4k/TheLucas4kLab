@@ -197,7 +197,13 @@ export function Inspector({
         {hasLayout(element) ? " · posicionado" : " · empilhado"}
         {element.locked ? " · 🔒" : ""}
       </div>
+      {element.type === "button" && (
+        <p className="muted tip-banner">
+          Botão = widget: use a cruz, largura/altura e alinhar (igual imagem/texto).
+        </p>
+      )}
 
+      <h3 className="insp-section-title">Posição e tamanho</h3>
       {/* Controles rápidos */}
       <div className="edit-toolbar">
         <button className="btn ghost tiny" type="button" title="Trazer pra frente" onClick={onBringForward}>
@@ -393,6 +399,7 @@ export function Inspector({
         </button>
       )}
 
+      <h3 className="insp-section-title">Conteúdo do elemento</h3>
       {element.type === "button" && (
         <>
           <div className="field">

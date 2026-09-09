@@ -390,3 +390,22 @@ button { cursor: pointer; }
 .phone-el.abs[style*="height"] .phone-img {
   height: 100% !important; max-height: 100% !important; object-fit: inherit;
 }
+
+
+.insp-section-title {
+  margin: 14px 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+}
+.tip-banner {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
