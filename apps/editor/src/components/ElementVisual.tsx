@@ -4,6 +4,7 @@ import {
   emojiFromSrc,
   fontCss,
   isEmojiSrc,
+  resolveButtonStyle,
   resolveMediaSrc,
 } from "../types/content";
 
@@ -21,10 +22,35 @@ export function ElementVisual({
   el, interactive, onButtonClick, checks, onToggleCheck,
 }: Props) {
   if (el.type === "button") {
+    const s = resolveButtonStyle(el);
+    const style: CSSProperties = {
+      background: s.bgColor,
+      color: s.textColor,
+      fontFamily: fontCss(s.fontFamily),
+      fontSize: `${s.fontSize}px`,
+      fontWeight: s.fontWeight,
+      borderRadius: s.borderRadius >= 100 ? 9999 : s.borderRadius,
+      opacity: s.opacity,
+      padding: `${s.paddingY}px 14px`,
+      border:
+        s.borderWidth && s.borderWidth > 0
+          ? `${s.borderWidth}px solid ${s.borderColor || "#ffffff"}`
+          : "none",
+      boxShadow: "0 4px 12px rgba(15, 23, 42, 0.25)",
+      height: el.h != null ? "100%" : undefined,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: "100%",
+      textAlign: "center",
+      boxSizing: "border-box",
+      cursor: interactive ? "pointer" : "default",
+    };
     return (
       <button
         type="button"
-        className="phone-btn"
+        className="phone-btn phone-btn-styled"
+        style={style}
         onClick={(e) => {
           if (!interactive) return;
           e.stopPropagation();

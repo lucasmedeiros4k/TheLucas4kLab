@@ -137,18 +137,39 @@ class ButtonElement extends ContentElement {
   final ButtonAction action;
   /// none | click | pop | beep | caminho de asset
   final String clickSound;
+  final String bgColor;
+  final String textColor;
+  final String fontFamily;
+  final double fontSize;
+  final FontWeight fontWeight;
+  final double borderRadius;
+  final double opacity;
+  final String? borderColor;
+  final double borderWidth;
+  final double paddingY;
 
   const ButtonElement({
     required super.id,
     required this.label,
     required this.action,
     this.clickSound = "none",
+    this.bgColor = "#38bdf8",
+    this.textColor = "#0f172a",
+    this.fontFamily = "system",
+    this.fontSize = 16,
+    this.fontWeight = FontWeight.w600,
+    this.borderRadius = 12,
+    this.opacity = 1,
+    this.borderColor,
+    this.borderWidth = 0,
+    this.paddingY = 12,
     super.x,
     super.y,
     super.w,
     super.h,
     super.locked,
   });
+
   factory ButtonElement.fromJson(Map<String, dynamic> json) => ButtonElement(
         id: json["id"] as String? ?? "",
         label: json["label"] as String? ?? "Botão",
@@ -156,12 +177,65 @@ class ButtonElement extends ContentElement {
         clickSound: (json["clickSound"] as String?)?.trim().isNotEmpty == true
             ? (json["clickSound"] as String).trim()
             : "none",
+        bgColor: (json["bgColor"] as String?)?.trim().isNotEmpty == true
+            ? (json["bgColor"] as String).trim()
+            : "#38bdf8",
+        textColor: (json["textColor"] as String?)?.trim().isNotEmpty == true
+            ? (json["textColor"] as String).trim()
+            : "#0f172a",
+        fontFamily: json["fontFamily"] as String? ?? "system",
+        fontSize: (json["fontSize"] as num?)?.toDouble() ?? 16,
+        fontWeight: _parseWeight(json["fontWeight"], fallback: FontWeight.w600),
+        borderRadius: (json["borderRadius"] as num?)?.toDouble() ?? 12,
+        opacity: normalizeOpacity(json["opacity"] ?? 1),
+        borderColor: (json["borderColor"] as String?)?.trim().isNotEmpty == true
+            ? (json["borderColor"] as String).trim()
+            : null,
+        borderWidth: (json["borderWidth"] as num?)?.toDouble() ?? 0,
+        paddingY: (json["paddingY"] as num?)?.toDouble() ?? 12,
         x: ContentElement._pct(json["x"]),
         y: ContentElement._pct(json["y"]),
         w: ContentElement._pct(json["w"]),
         h: ContentElement._pct(json["h"]),
         locked: json["locked"] == true,
       );
+
+  Color get resolvedBg => TextElement._parseColor(bgColor) ?? const Color(0xFF38BDF8);
+  Color get resolvedText => TextElement._parseColor(textColor) ?? const Color(0xFF0F172A);
+  Color? get resolvedBorder =>
+      borderColor != null ? TextElement._parseColor(borderColor) : null;
+
+  TextStyle resolveLabelStyle() {
+    final base = TextStyle(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: resolvedText,
+    );
+    switch (fontFamily) {
+      case "Roboto":
+        return GoogleFonts.roboto(textStyle: base);
+      case "Open Sans":
+        return GoogleFonts.openSans(textStyle: base);
+      case "Lato":
+        return GoogleFonts.lato(textStyle: base);
+      case "Nunito":
+        return GoogleFonts.nunito(textStyle: base);
+      case "Montserrat":
+        return GoogleFonts.montserrat(textStyle: base);
+      case "system":
+      default:
+        return base;
+    }
+  }
+
+  static FontWeight _parseWeight(dynamic v, {FontWeight fallback = FontWeight.w400}) {
+    if (v == null) return fallback;
+    final n = v is num ? v.toInt() : int.tryParse(v.toString()) ?? fallback.value;
+    return FontWeight.values.firstWhere(
+      (w) => w.value == n,
+      orElse: () => fallback,
+    );
+  }
 }
 
 class VideoElement extends ContentElement {

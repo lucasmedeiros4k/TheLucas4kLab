@@ -39,11 +39,27 @@ class _ElementRendererState extends State<ElementRenderer> {
       );
     }
     if (el is ButtonElement) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: widget.expand
-            ? SizedBox(width: double.infinity, child: _PressScaleButton(label: el.label, onPressed: () => _onButton(el)))
-            : _PressScaleButton(label: el.label, onPressed: () => _onButton(el)),
+      final fillH = el.h != null;
+      Widget btn = _PressScaleButton(
+        element: el,
+        fillHeight: fillH,
+        onPressed: () => _onButton(el),
+      );
+      if (widget.expand) {
+        btn = SizedBox(
+          width: double.infinity,
+          height: fillH ? double.infinity : null,
+          child: btn,
+        );
+      } else if (fillH) {
+        btn = SizedBox(height: double.infinity, child: btn);
+      }
+      return Opacity(
+        opacity: el.opacity.clamp(0.0, 1.0),
+        child: Padding(
+          padding: EdgeInsets.only(bottom: el.hasLayout ? 0 : 10),
+          child: btn,
+        ),
       );
     }
     if (el is ImageElement) {
@@ -109,7 +125,7 @@ class _ElementRendererState extends State<ElementRenderer> {
     }
   }
 
-    Widget _buildImage(ImageElement el) {
+  Widget _buildImage(ImageElement el) {
     if (el.src.isEmpty) {
       return const Text("Imagem sem fonte", style: TextStyle(color: Colors.grey));
     }
@@ -165,12 +181,17 @@ class _ElementRendererState extends State<ElementRenderer> {
   }
 }
 
-/// Escala sutil no toque do botão (opacity + scale).
+/// Escala sutil no toque do botão (opacity + scale) + estilos gráficos.
 class _PressScaleButton extends StatefulWidget {
-  final String label;
+  final ButtonElement element;
+  final bool fillHeight;
   final Future<void> Function() onPressed;
 
-  const _PressScaleButton({required this.label, required this.onPressed});
+  const _PressScaleButton({
+    required this.element,
+    required this.onPressed,
+    this.fillHeight = false,
+  });
 
   @override
   State<_PressScaleButton> createState() => _PressScaleButtonState();
@@ -181,23 +202,47 @@ class _PressScaleButtonState extends State<_PressScaleButton> {
 
   @override
   Widget build(BuildContext context) {
+    final el = widget.element;
+    final radius = el.borderRadius >= 100 ? 999.0 : el.borderRadius;
+    final border = el.borderWidth > 0 && el.resolvedBorder != null
+        ? Border.all(color: el.resolvedBorder!, width: el.borderWidth)
+        : null;
+
     return AnimatedScale(
       scale: _pressed ? 0.96 : 1,
       duration: const Duration(milliseconds: 100),
       child: AnimatedOpacity(
         opacity: _pressed ? 0.88 : 1,
         duration: const Duration(milliseconds: 100),
-        child: FilledButton(
-          onPressed: () async {
-            setState(() => _pressed = true);
-            await Future<void>.delayed(const Duration(milliseconds: 80));
-            if (mounted) setState(() => _pressed = false);
-            await widget.onPressed();
-          },
-          child: Text(widget.label),
+        child: Material(
+          color: el.resolvedBg,
+          borderRadius: BorderRadius.circular(radius),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(radius),
+            onTap: () async {
+              setState(() => _pressed = true);
+              await Future<void>.delayed(const Duration(milliseconds: 80));
+              if (mounted) setState(() => _pressed = false);
+              await widget.onPressed();
+            },
+            child: Container(
+              width: double.infinity,
+              height: widget.fillHeight ? double.infinity : null,
+              alignment: Alignment.center,
+              padding: EdgeInsets.symmetric(vertical: el.paddingY, horizontal: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                border: border,
+              ),
+              child: Text(
+                el.label,
+                textAlign: TextAlign.center,
+                style: el.resolveLabelStyle(),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
-

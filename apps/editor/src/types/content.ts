@@ -23,6 +23,28 @@ export const CLICK_SOUND_OPTIONS: { id: ClickSoundId; label: string }[] = [
   { id: "beep", label: "Beep" },
 ];
 
+/** Forma do botão → borderRadius em px (pill ≈ 999). */
+export type ButtonShapeId = "retangulo" | "arredondado" | "pill";
+
+export const BUTTON_SHAPE_OPTIONS: { id: ButtonShapeId; label: string; radius: number }[] = [
+  { id: "retangulo", label: "Retângulo", radius: 4 },
+  { id: "arredondado", label: "Arredondado", radius: 12 },
+  { id: "pill", label: "Pill", radius: 999 },
+];
+
+export const BUTTON_STYLE_DEFAULTS = {
+  bgColor: "#38bdf8",
+  textColor: "#0f172a",
+  fontFamily: "system" as const,
+  fontSize: 16,
+  fontWeight: 600,
+  borderRadius: 12,
+  opacity: 1,
+  borderColor: undefined as string | undefined,
+  borderWidth: 0,
+  paddingY: 12,
+};
+
 export type ButtonElement = {
   id: string;
   type: "button";
@@ -30,7 +52,155 @@ export type ButtonElement = {
   action: ButtonAction;
   /** Som ao tocar no app publicado (none/click/pop/beep). Preferências do usuário ficam no app. */
   clickSound?: ClickSoundId | string;
+  /** Cor de fundo (hex). Default #38bdf8. */
+  bgColor?: string;
+  /** Cor do texto (hex). */
+  textColor?: string;
+  fontFamily?: FontFamilyId | string;
+  fontSize?: number;
+  fontWeight?: number;
+  /** Raio em px (4 = retângulo, 12 = arredondado, 999 = pill). */
+  borderRadius?: number;
+  /** Opacidade 0–1. */
+  opacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  /** Padding vertical em px. */
+  paddingY?: number;
 } & ElementLayout;
+
+export function buttonShapeFromRadius(r?: number): ButtonShapeId {
+  if (r == null) return "arredondado";
+  if (r >= 100) return "pill";
+  if (r <= 6) return "retangulo";
+  return "arredondado";
+}
+
+export function radiusForShape(shape: ButtonShapeId): number {
+  return BUTTON_SHAPE_OPTIONS.find((o) => o.id === shape)?.radius ?? 12;
+}
+
+/** Resolve estilos do botão com defaults (rascunhos antigos). */
+export function resolveButtonStyle(el: ButtonElement) {
+  const d = BUTTON_STYLE_DEFAULTS;
+  return {
+    bgColor: el.bgColor || d.bgColor,
+    textColor: el.textColor || d.textColor,
+    fontFamily: el.fontFamily || d.fontFamily,
+    fontSize: el.fontSize ?? d.fontSize,
+    fontWeight: el.fontWeight ?? d.fontWeight,
+    borderRadius: el.borderRadius ?? d.borderRadius,
+    opacity: normalizeOpacity(el.opacity ?? d.opacity),
+    borderColor: el.borderColor,
+    borderWidth: el.borderWidth ?? d.borderWidth,
+    paddingY: el.paddingY ?? d.paddingY,
+  };
+}
+
+/** Templates clínicos de 1 toque (Primário / Alerta / Secundário). */
+export type ButtonTemplateId = "primario" | "alerta" | "secundario";
+
+export type ButtonStylePatch = {
+  bgColor: string;
+  textColor: string;
+  borderRadius: number;
+  borderWidth: number;
+  borderColor?: string;
+  opacity: number;
+  fontWeight: number;
+  fontSize: number;
+  paddingY: number;
+};
+
+export const BUTTON_TEMPLATES: {
+  id: ButtonTemplateId;
+  label: string;
+  hint: string;
+  patch: ButtonStylePatch;
+}[] = [
+  {
+    id: "primario",
+    label: "Primário",
+    hint: "Ação principal — azul/verde clínico",
+    patch: {
+      bgColor: "#0d9488",
+      textColor: "#ffffff",
+      borderRadius: 12,
+      borderWidth: 0,
+      opacity: 1,
+      fontWeight: 600,
+      fontSize: 16,
+      paddingY: 12,
+    },
+  },
+  {
+    id: "alerta",
+    label: "Alerta",
+    hint: "Urgência — vermelho/âmbar",
+    patch: {
+      bgColor: "#dc2626",
+      textColor: "#ffffff",
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: "#f59e0b",
+      opacity: 1,
+      fontWeight: 700,
+      fontSize: 16,
+      paddingY: 12,
+    },
+  },
+  {
+    id: "secundario",
+    label: "Secundário",
+    hint: "Outline — secundário",
+    patch: {
+      bgColor: "#0f172a",
+      textColor: "#7dd3fc",
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: "#38bdf8",
+      opacity: 1,
+      fontWeight: 600,
+      fontSize: 16,
+      paddingY: 12,
+    },
+  },
+];
+
+function hexToRgb(hex: string): [number, number, number] | null {
+  let s = hex.trim();
+  if (s.startsWith("#")) s = s.slice(1);
+  if (s.length === 3) s = s.split("").map((c) => c + c).join("");
+  if (s.length !== 6) return null;
+  const n = Number.parseInt(s, 16);
+  if (Number.isNaN(n)) return null;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function relativeLuminance(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0.5;
+  const lin = (c: number) => {
+    const x = c / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  const [r, g, b] = rgb.map(lin);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Razão de contraste WCAG (bg vs texto). */
+export function buttonContrastRatio(bg: string, fg: string): number {
+  const L1 = relativeLuminance(bg);
+  const L2 = relativeLuminance(fg);
+  const light = Math.max(L1, L2);
+  const dark = Math.min(L1, L2);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+/** true se contraste < 4.5:1 (aviso amigável no inspetor). */
+export function buttonContrastWarn(bg: string, fg: string): boolean {
+  return buttonContrastRatio(bg, fg) < 4.5;
+}
 
 export type VideoElement = {
   id: string;
@@ -174,6 +344,7 @@ export function defaultWidthFor(type: ContentElement["type"]): number {
 /** Altura padrão opcional (%). Imagem ganha h; outros ficam auto até o usuário definir. */
 export function defaultHeightFor(type: ContentElement["type"]): number | undefined {
   if (type === "image") return 25;
+  if (type === "button") return 8;
   return undefined;
 }
 
@@ -202,12 +373,22 @@ export function createElementOfType(
     locked: layout?.locked,
   };
   if (type === "button") {
+    const d = BUTTON_STYLE_DEFAULTS;
     return {
       id: uid("btn"),
       type,
       label: "Botão",
       action: { type: "navigate", target: "" },
       clickSound: "none",
+      bgColor: d.bgColor,
+      textColor: d.textColor,
+      fontFamily: d.fontFamily,
+      fontSize: d.fontSize,
+      fontWeight: d.fontWeight,
+      borderRadius: d.borderRadius,
+      opacity: d.opacity,
+      borderWidth: d.borderWidth,
+      paddingY: d.paddingY,
       ...pos,
     };
   }

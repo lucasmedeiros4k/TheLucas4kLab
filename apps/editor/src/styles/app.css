@@ -181,6 +181,10 @@ button { cursor: pointer; }
   border: none; color: white; border-radius: 12px; padding: 12px 14px;
   font-weight: 600; box-shadow: 0 4px 12px rgba(3, 105, 161, 0.35);
 }
+.phone-btn-styled {
+  /* estilos inline do ElementVisual (bg/texto/fonte/raio/opacidade) */
+  background-image: none;
+}
 .phone-text {
   margin: 0; font-size: 0.95rem; line-height: 1.45; color: #e2e8f0;
   white-space: pre-wrap;

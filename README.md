@@ -51,6 +51,7 @@ Campos novos no inspetor (compatíveis com rascunhos antigos — defaults se aus
 2. **Texto**: fonte (system + Google Fonts livres), samanho, peso, cor, alinhamento, altura da linha
 3. **Botão → Som do clique**: nenhum / clique / pop / beep (assets no app). Preferências som/vibração ficam **no app publicado** (engrenagem), não no JSON.
 4. **Altura `h`**, resize, cruz/setas, ordem z, duplicar, alinhar, lock, grade (opcional). Rascunhos antigos sem `h`/`locked` continuam válidos.
+5. **Aparência do botão**: `bgColor`, `textColor`, fonte, tamanho, peso, `borderRadius` (Retângulo / Arredondado / Pill), opacidade, borda/padding opcionais. Templates clínicos de 1 toque: **Primário** (azul/verde), **Alerta** (vermelho/âmbar), **Secundário** (outline). Aviso de contraste no inspetor. Rascunhos antigos usam defaults.
 
 
 ## Imagens e mídia
@@ -93,7 +94,7 @@ flutter run -d linux
 O app:
 
 - Renderiza telas do JSON publicado (plano de fundo com opacidade + imagens)
-- Aplica formatacao de texto (google_fonts)
+- Aplica formatacao de texto e estilo gráfico de botão (google_fonts, cores, raio, opacidade)
 - Com x/y: Stack+Positioned; sem layout: Column
 - Navega com pilha em botões `navigate`
 - Abre URLs com `url_launcher`
@@ -117,7 +118,7 @@ O app:
       "backgroundImage": "/media/fundo.png",
       "backgroundOpacity": 0.85,
       "elements": [
-        { "id": "btn1", "type": "button", "label": "Ir", "clickSound": "click", "action": { "type": "navigate", "target": "outra" } },
+        { "id": "btn1", "type": "button", "label": "Ir", "clickSound": "click", "bgColor": "#0d9488", "textColor": "#ffffff", "fontFamily": "system", "fontSize": 16, "fontWeight": 600, "borderRadius": 12, "opacity": 1, "action": { "type": "navigate", "target": "outra" } },
         { "id": "img1", "type": "image", "src": "/media/logo.png", "alt": "Logo", "fit": "contain", "role": "logo" },
         { "id": "vid1", "type": "video", "url": "https://example.com", "title": "Opcional" },
         { "id": "chk1", "type": "checklist", "title": "Lista", "items": [{ "id": "i1", "label": "Item" }] },
@@ -135,8 +136,16 @@ Campos novos sao opcionais (defaults se faltarem no draft antigo):
 - backgroundOpacity (tela): default 1; aceita 0-1 ou 0-100
 - texto: fontFamily (system, Roboto, Open Sans, Lato, Nunito, Montserrat), fontSize, fontWeight, color, textAlign, lineHeight
 - botao: clickSound (none | click | pop | beep)
+- botao estilo: bgColor, textColor, fontFamily, fontSize, fontWeight, borderRadius (px; 999≈pill), opacity (0-1), borderColor/borderWidth/paddingY opcionais
 
 Preferencias soundEnabled / vibrationEnabled NAO entram no JSON — vivem no aparelho via SharedPreferences.
+
+## Próximas ideias (opcional)
+
+- Sombra no botão (elevation / box-shadow)
+- Ícone dentro do botão (emoji ou /media)
+- Intensidade da animação de press (scale/opacity configurável)
+
 
 
 ## Estrutura

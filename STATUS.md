@@ -31,3 +31,10 @@ Data: 2026-09-08 (America/Sao_Paulo, UTC-3)
 - Frente/trás (ordem z), duplicar, alinhar (esq/centro/dir/topo/meio/baixo), travar posição, grade.
 - Preview: CSS fade-slide ao trocar tela; Flutter: PageRouteBuilder fade-slide + AnimatedScale no botão.
 - draft.json antigo: h/locked ausentes = defaults (altura auto, unlocked).
+
+## Aparência do botão + templates clínicos (2026-09-08)
+
+- Schema botão: bgColor, textColor, fontFamily, fontSize, fontWeight, borderRadius, opacity (+ border/paddingY opcionais). Defaults p/ drafts antigos.
+- Inspetor: seção "Aparência do botão"; templates 1 toque Primário / Alerta / Secundário; aviso de contraste; slider de altura h claro.
+- Canvas ElementVisual e Flutter ElementRenderer aplicam estilos ao vivo (build badge `button-style-v1`).
+

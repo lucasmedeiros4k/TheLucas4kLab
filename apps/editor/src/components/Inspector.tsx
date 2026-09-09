@@ -1,15 +1,24 @@
 import { useRef, useState } from "react";
 import type { AppContent, ContentElement, Screen } from "../types/content";
 import {
+  BUTTON_SHAPE_OPTIONS,
+  BUTTON_STYLE_DEFAULTS,
+  BUTTON_TEMPLATES,
   CLICK_SOUND_OPTIONS,
   FONT_FAMILY_OPTIONS,
   ICON_PRESETS,
+  buttonContrastRatio,
+  buttonContrastWarn,
+  buttonShapeFromRadius,
   clampPct,
   emojiSrc,
   hasLayout,
   normalizeOpacity,
+  radiusForShape,
+  resolveButtonStyle,
   uid,
 } from "../types/content";
+import type { ButtonShapeId } from "../types/content";
 import { uploadMedia } from "../api/contentApi";
 
 type Props = {
@@ -358,7 +367,10 @@ export function Inspector({
         />
       </div>
       <div className="field">
-        <label>Altura ({element.h != null ? `${hVal}%` : "auto"})</label>
+        <label>
+          Altura h ({element.h != null ? `${hVal}%` : "auto"})
+          {element.type === "button" ? " · botão" : ""}
+        </label>
         <input
           type="range"
           min={5}
@@ -368,6 +380,11 @@ export function Inspector({
           disabled={!!element.locked}
           onChange={(e) => setLayout({ h: clampPct(Number(e.target.value), 5, 100) })}
         />
+        {element.type === "button" && element.h == null && (
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem" }}>
+            Arraste o slider para definir altura fixa (% do celular). Novos botões já vêm com h.
+          </p>
+        )}
         {element.h != null && (
           <button
             className="btn ghost tiny"
@@ -461,6 +478,186 @@ export function Inspector({
               Som/vibração respeitam as preferências do app publicado (engrenagem: Silenciar / Som / Vibração).
             </p>
           </div>
+
+          <h3 className="insp-section-title">Aparência do botão</h3>
+          {(() => {
+            const s = resolveButtonStyle(element);
+            const shape = buttonShapeFromRadius(element.borderRadius ?? s.borderRadius);
+            const opacityPct = Math.round(s.opacity * 100);
+            const contrast = buttonContrastRatio(s.bgColor, s.textColor);
+            const lowContrast = buttonContrastWarn(s.bgColor, s.textColor);
+            return (
+              <>
+                <div className="field">
+                  <label>Templates clínicos (1 toque)</label>
+                  <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+                    {BUTTON_TEMPLATES.map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        className="btn ghost tiny"
+                        title={tpl.hint}
+                        onClick={() => onChange({ ...element, ...tpl.patch })}
+                        style={
+                          tpl.id === "primario"
+                            ? { borderColor: "#0d9488", color: "#5eead4" }
+                            : tpl.id === "alerta"
+                              ? { borderColor: "#dc2626", color: "#fca5a5" }
+                              : { borderColor: "#38bdf8", color: "#7dd3fc" }
+                        }
+                      >
+                        {tpl.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem" }}>
+                    Primário (azul/verde) · Alerta (vermelho/âmbar) · Secundário (outline)
+                  </p>
+                </div>
+                {lowContrast && (
+                  <p className="muted tip-banner" style={{ borderColor: "rgba(245, 158, 11, 0.5)", background: "rgba(245, 158, 11, 0.12)" }}>
+                    ⚠️ Contraste baixo ({contrast.toFixed(1)}:1). Tente texto mais claro/escuro (ideal ≥ 4,5:1).
+                  </p>
+                )}
+                <div className="field">
+                  <label>Cor de fundo</label>
+                  <div className="row">
+                    <input
+                      type="color"
+                      value={/^#[0-9a-fA-F]{6}$/.test(s.bgColor) ? s.bgColor : BUTTON_STYLE_DEFAULTS.bgColor}
+                      onChange={(e) => onChange({ ...element, bgColor: e.target.value })}
+                      style={{ width: 48, padding: 2, flex: "0 0 auto" }}
+                    />
+                    <input
+                      value={element.bgColor || s.bgColor}
+                      onChange={(e) => onChange({ ...element, bgColor: e.target.value })}
+                      placeholder={BUTTON_STYLE_DEFAULTS.bgColor}
+                    />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Cor do texto</label>
+                  <div className="row">
+                    <input
+                      type="color"
+                      value={/^#[0-9a-fA-F]{6}$/.test(s.textColor) ? s.textColor : BUTTON_STYLE_DEFAULTS.textColor}
+                      onChange={(e) => onChange({ ...element, textColor: e.target.value })}
+                      style={{ width: 48, padding: 2, flex: "0 0 auto" }}
+                    />
+                    <input
+                      value={element.textColor || s.textColor}
+                      onChange={(e) => onChange({ ...element, textColor: e.target.value })}
+                      placeholder={BUTTON_STYLE_DEFAULTS.textColor}
+                    />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Fonte</label>
+                  <select
+                    value={element.fontFamily || s.fontFamily}
+                    onChange={(e) => onChange({ ...element, fontFamily: e.target.value })}
+                  >
+                    {FONT_FAMILY_OPTIONS.map((f) => (
+                      <option key={f.id} value={f.id}>{f.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Tamanho ({s.fontSize}px)</label>
+                  <input
+                    type="range"
+                    min={10}
+                    max={36}
+                    step={1}
+                    value={s.fontSize}
+                    onChange={(e) => onChange({ ...element, fontSize: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="field">
+                  <label>Peso</label>
+                  <select
+                    value={String(s.fontWeight)}
+                    onChange={(e) => onChange({ ...element, fontWeight: Number(e.target.value) })}
+                  >
+                    <option value="400">Normal (400)</option>
+                    <option value="600">Semi-negrito (600)</option>
+                    <option value="700">Negrito (700)</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Forma</label>
+                  <select
+                    value={shape}
+                    onChange={(e) =>
+                      onChange({
+                        ...element,
+                        borderRadius: radiusForShape(e.target.value as ButtonShapeId),
+                      })
+                    }
+                  >
+                    {BUTTON_SHAPE_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Opacidade ({opacityPct}%)</label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={opacityPct}
+                    onChange={(e) => {
+                      const pct = Number(e.target.value);
+                      onChange({ ...element, opacity: Math.round((pct / 100) * 100) / 100 });
+                    }}
+                  />
+                </div>
+                <div className="field">
+                  <label>Borda (opcional)</label>
+                  <div className="row">
+                    <input
+                      type="color"
+                      value={/^#[0-9a-fA-F]{6}$/.test(element.borderColor || "") ? element.borderColor! : "#ffffff"}
+                      onChange={(e) =>
+                        onChange({
+                          ...element,
+                          borderColor: e.target.value,
+                          borderWidth: element.borderWidth && element.borderWidth > 0 ? element.borderWidth : 2,
+                        })
+                      }
+                      style={{ width: 48, padding: 2, flex: "0 0 auto" }}
+                      title="Cor da borda"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      max={8}
+                      step={1}
+                      value={element.borderWidth ?? 0}
+                      onChange={(e) =>
+                        onChange({ ...element, borderWidth: Math.max(0, Number(e.target.value) || 0) })
+                      }
+                      placeholder="largura px"
+                      title="Largura da borda (px)"
+                    />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Padding vertical ({s.paddingY}px)</label>
+                  <input
+                    type="range"
+                    min={4}
+                    max={28}
+                    step={1}
+                    value={s.paddingY}
+                    onChange={(e) => onChange({ ...element, paddingY: Number(e.target.value) })}
+                  />
+                </div>
+              </>
+            );
+          })()}
         </>
       )}
 
