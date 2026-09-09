@@ -374,15 +374,9 @@ button { cursor: pointer; }
 }
 .check-label input { width: auto; accent-color: var(--accent); }
 
-/* —— Preview screen transition —— */
-.preview-screen {
-  position: absolute; inset: 0; z-index: 1;
-  opacity: 0; transform: translateX(12px);
-  transition: opacity 0.28s ease, transform 0.28s ease;
-}
-.preview-screen.preview-enter-active {
-  opacity: 1; transform: translateX(0);
-}
+/* —— Preview fade (sem transform no container de layout) —— */
+.phone-stage.preview-fade-out { opacity: 0.35; transition: opacity 0.15s ease; }
+.phone-stage.preview-fade-in { opacity: 1; transition: opacity 0.28s ease; }
 .phone-el.abs {
   display: flex; flex-direction: column;
 }
@@ -424,3 +418,18 @@ button { cursor: pointer; }
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
 }
 .dpad-btn { font-size: 1.1rem; min-width: 36px; min-height: 36px; }
+
+/* Abs widgets: botão/imagem preenchem a caixa w×h do editor e do preview */
+.phone-el.abs > .phone-btn,
+.phone-el.abs > .phone-btn-styled {
+  flex: 1 1 auto;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0;
+}
+.phone-el.abs > .phone-text {
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}

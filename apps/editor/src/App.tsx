@@ -18,7 +18,7 @@ import { Canvas } from "./components/Canvas";
 import { Inspector } from "./components/Inspector";
 
 /** Se não aparecer no topo, o Pull não aplicou. */
-const EDITOR_BUILD = "button-style-v1";
+const EDITOR_BUILD = "preview-layout-v1";
 import { PreviewMode } from "./components/PreviewMode";
 import { Toolbox } from "./components/Toolbox";
 

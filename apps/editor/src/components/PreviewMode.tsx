@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { AppContent } from "../types/content";
+import type { AppContent, ContentElement } from "../types/content";
 import {
   hasLayout,
   isEmojiSrc,
@@ -10,11 +10,16 @@ import { ElementVisual } from "./ElementVisual";
 
 type Props = { content: AppContent };
 
+/**
+ * Preview usa a MESMA estrutura do Canvas (phone-stage → flow + abs),
+ * para posição/tamanho/estilo baterem com o editor.
+ * A animação só aplica opacity — sem transform no container de layout
+ * (transform cria containing block e distorce % de height/width).
+ */
 export function PreviewMode({ content }: Props) {
   const [stack, setStack] = useState<string[]>([content.homeScreenId]);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
-  const [animKey, setAnimKey] = useState(0);
-  const [animClass, setAnimClass] = useState("preview-enter");
+  const [fade, setFade] = useState(true);
   const screenId = stack[stack.length - 1];
   const screen = useMemo(
     () => content.screens.find((s) => s.id === screenId),
@@ -22,9 +27,8 @@ export function PreviewMode({ content }: Props) {
   );
 
   useEffect(() => {
-    setAnimClass("preview-enter");
-    setAnimKey((k) => k + 1);
-    const t = window.setTimeout(() => setAnimClass("preview-enter preview-enter-active"), 20);
+    setFade(false);
+    const t = window.setTimeout(() => setFade(true), 30);
     return () => window.clearTimeout(t);
   }, [screenId]);
 
@@ -51,13 +55,10 @@ export function PreviewMode({ content }: Props) {
   const flowEls = screen.elements.filter((el) => !hasLayout(el));
   const absEls = screen.elements.filter((el) => hasLayout(el));
 
-  const goTo = (target: string) => {
-    setStack((s) => [...s, target]);
-  };
-
+  const goTo = (target: string) => setStack((s) => [...s, target]);
   const goBack = () => setStack((s) => s.slice(0, -1));
 
-  const buttonHandler = (el: (typeof screen.elements)[0]) => {
+  const buttonHandler = (el: ContentElement) => {
     if (el.type !== "button") return;
     if (el.action.type === "navigate") {
       if (!el.action.target) return;
@@ -66,6 +67,15 @@ export function PreviewMode({ content }: Props) {
       window.open(el.action.target, "_blank", "noopener,noreferrer");
     }
   };
+
+  const absStyle = (el: ContentElement, zIndex: number): CSSProperties => ({
+    left: `${el.x}%`,
+    top: `${el.y}%`,
+    width: el.w != null ? `${el.w}%` : undefined,
+    height: el.h != null ? `${el.h}%` : undefined,
+    zIndex: 2 + zIndex,
+    overflow: el.h != null ? "hidden" : undefined,
+  });
 
   return (
     <div className="phone-workspace preview-workspace">
@@ -77,44 +87,29 @@ export function PreviewMode({ content }: Props) {
           </button>
         )}
       </div>
-      {content.disclaimer && <div className="disclaimer preview-disclaimer">{content.disclaimer}</div>}
+      {content.disclaimer && (
+        <div className="disclaimer preview-disclaimer">{content.disclaimer}</div>
+      )}
 
       <div className="phone-bezel">
         <div className="phone-notch" aria-hidden />
-        <div className={"phone-stage" + (bgUrl ? " has-bg" : "")}>
+        <div
+          className={
+            "phone-stage" +
+            (bgUrl ? " has-bg" : "") +
+            (fade ? " preview-fade-in" : " preview-fade-out")
+          }
+        >
           {bgLayerStyle && <div className="phone-bg-layer" style={bgLayerStyle} aria-hidden />}
           {bgUrl && !isEmojiSrc(bgUrl) && <div className="phone-bg-scrim" aria-hidden />}
-          <div key={animKey} className={"preview-screen " + animClass}>
-            {screen.elements.length === 0 && (
-              <div className="phone-empty-hint">Tela vazia</div>
-            )}
-            <div className="phone-flow">
-              {flowEls.map((el) => (
-                <div key={el.id} className="phone-el">
-                  <ElementVisual
-                    el={el}
-                    interactive
-                    checks={checks}
-                    onToggleCheck={(id, checked) =>
-                      setChecks((c) => ({ ...c, [id]: checked }))
-                    }
-                    onButtonClick={() => buttonHandler(el)}
-                  />
-                </div>
-              ))}
-            </div>
-            {absEls.map((el) => (
-              <div
-                key={el.id}
-                className="phone-el abs"
-                style={{
-                  left: `${el.x}%`,
-                  top: `${el.y}%`,
-                  width: el.w != null ? `${el.w}%` : undefined,
-                  height: el.h != null ? `${el.h}%` : undefined,
-                  overflow: el.h != null ? "hidden" : undefined,
-                }}
-              >
+
+          {screen.elements.length === 0 && (
+            <div className="phone-empty-hint">Tela vazia</div>
+          )}
+
+          <div className="phone-flow">
+            {flowEls.map((el) => (
+              <div key={el.id} className="phone-el">
                 <ElementVisual
                   el={el}
                   interactive
@@ -127,6 +122,24 @@ export function PreviewMode({ content }: Props) {
               </div>
             ))}
           </div>
+
+          {absEls.map((el, i) => (
+            <div
+              key={el.id}
+              className="phone-el abs"
+              style={absStyle(el, flowEls.length + i)}
+            >
+              <ElementVisual
+                el={el}
+                interactive
+                checks={checks}
+                onToggleCheck={(id, checked) =>
+                  setChecks((c) => ({ ...c, [id]: checked }))
+                }
+                onButtonClick={() => buttonHandler(el)}
+              />
+            </div>
+          ))}
         </div>
         <div className="phone-home-bar" aria-hidden />
       </div>
